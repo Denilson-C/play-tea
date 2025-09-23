@@ -49,8 +49,8 @@ COR_BOTAO_HOVER = (150, 150, 255)
 COR_PONTINHOS = (255, 255, 0)  # Amarelo padrão para pontinhos
 MUSICAS_DISPONIVEIS = {
     "Mudo": None,
-    "Trilha 1": os.path.join(AUDIO_DIR, "musica1.ogg"),
-    "Trilha 2": os.path.join(AUDIO_DIR, "musica2.ogg")
+    "Ruído Branco": os.path.join(AUDIO_DIR, "musica1.ogg"),
+    "Ruído Rosa": os.path.join(AUDIO_DIR, "musica2.ogg")
 }
 MUSICA_ATUAL_NOME = "Mudo"
 
@@ -74,7 +74,7 @@ FASES = {
         "labirinto": [],  # Fase 1 não usa caminho retangular
         "raio_borda": 0,
         "chegada_img": os.path.join(IMAGES_DIR, "casa.png"),
-        "pontinhos": {"habilitado": True, "espacamento": 20}
+        "pontinhos": {"habilitado": True, "espacamento": 40}
     },
     2: {
         "peixe_img": os.path.join(IMAGES_DIR, "cachorro.png"),
@@ -91,7 +91,7 @@ FASES = {
         "raio_borda": 0,
         #"borda_img": os.path.join(IMAGES_DIR, "parede 1.png"),
         "chegada_img": os.path.join(IMAGES_DIR, "casa.png"),
-        "pontinhos": {"habilitado": True, "espacamento": 30}
+        "pontinhos": {"habilitado": True, "espacamento": 50}
     },
     3: {
         "peixe_img": os.path.join(IMAGES_DIR, "gato.png"),
@@ -110,7 +110,7 @@ FASES = {
         ],
         "raio_borda": 0,
         "chegada_img": os.path.join(IMAGES_DIR, "casa.png"),
-        "pontinhos": {"habilitado": True, "espacamento": 30}
+        "pontinhos": {"habilitado": True, "espacamento": 50}
     }
 }
 
@@ -125,8 +125,8 @@ class ProgressoJogo:
         
         # Áreas e posições
         self.areas_validas_atual = []
-        self.area_inicio = pygame.Rect(0, ALTURA_TELA_VIRTUAL /1.89 - 50, 50, 50)
-        self.area_chegada = pygame.Rect(LARGURA_TELA_VIRTUAL - 100, ALTURA_TELA_VIRTUAL / 2 - 50, 100, 100)
+        self.area_inicio = pygame.Rect(0, ALTURA_TELA_VIRTUAL /1.89 - 60, 60, 60)
+        self.area_chegada = pygame.Rect(LARGURA_TELA_VIRTUAL - 120, ALTURA_TELA_VIRTUAL / 2 - 60, 120, 120)
         self.posicao_peixinho = list(self.area_inicio.center)
         
         # Labirinto e pontinhos
@@ -149,6 +149,9 @@ class ProgressoJogo:
         self.segmento_temporario = None
         self.desenhando_caminho = False
         self.caminho_temporario = []
+        self.criando_linha_reta = False
+        self.ponto_inicio_linha = None
+        self.personagem_iniciou_movimento = False
     
     def resetar_edicao(self):
         """Reseta todas as variáveis de modo de edição"""
@@ -161,6 +164,9 @@ class ProgressoJogo:
         self.segmento_temporario = None
         self.desenhando_caminho = False
         self.caminho_temporario = []
+        self.criando_linha_reta = False
+        self.ponto_inicio_linha = None
+        self.personagem_iniciou_movimento = False
     
     def atualizar_areas_validas(self):
         """Atualiza a lista de áreas válidas com base no labirinto atual"""
@@ -183,6 +189,26 @@ class ProgressoJogo:
     def limpar_pontinhos(self):
         """Remove todos os pontinhos"""
         self.pontinhos.clear()
+    
+    def criar_linha_reta_pontinhos(self, x1, y1, x2, y2, espacamento=20):
+        """Cria pontinhos em linha reta entre dois pontos"""
+        # Calcula a distância entre os pontos
+        distancia = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+        
+        if distancia < espacamento:
+            # Se os pontos estão muito próximos, adiciona apenas um pontinho no meio
+            self.adicionar_pontinho((x1 + x2) // 2, (y1 + y2) // 2)
+            return
+        
+        # Calcula quantos pontinhos cabem na linha
+        num_pontinhos = int(distancia / espacamento)
+        
+        # Cria os pontinhos distribuídos uniformemente
+        for i in range(num_pontinhos + 1):
+            t = i / num_pontinhos if num_pontinhos > 0 else 0
+            x = int(x1 + t * (x2 - x1))
+            y = int(y1 + t * (y2 - y1))
+            self.adicionar_pontinho(x, y)
     
     def verificar_vitoria(self):
         """Verifica se o jogador venceu (sem pontinhos restantes)"""
@@ -270,7 +296,7 @@ def carregar_fase(numero_fase):
     fase_info = FASES[numero_fase]
     try:
         progresso.peixinho_img_atual = pygame.image.load(fase_info["peixe_img"]).convert_alpha()
-        progresso.peixinho_img_atual = pygame.transform.scale(progresso.peixinho_img_atual, (40, 40))
+        progresso.peixinho_img_atual = pygame.transform.scale(progresso.peixinho_img_atual, (80, 80))
         
         progresso.fundo_img_atual = pygame.image.load(fase_info["fundo_img"]).convert()
         # <--- ALTERAÇÃO: Escala para o tamanho da TELA VIRTUAL ---
@@ -565,12 +591,26 @@ def desenhar_jogo(mouse_pos=(0, 0)):
             "I: Mover início",
             "C: Mover chegada",
             "P: Adicionar pontinhos",
+            "L: Linha reta de pontinhos",
             "R: Limpar pontinhos",
             "S: Salvar mudanças",
-            "Clique: Posicionar pontinho"
+            "Clique: Posicionar pontinho",
+            "L+Clique: Criar linha reta"
         ]
         for i, texto in enumerate(instrucoes):
             tela_virtual.blit(fonte_instrucoes.render(texto, True, BRANCO), (10, 10 + i * 25))
+        
+        # Mostrar indicador de modo linha reta
+        if progresso.criando_linha_reta:
+            if progresso.ponto_inicio_linha is not None:
+                # Mostrar ponto de início e linha até o mouse
+                pygame.draw.circle(tela_virtual, (255, 255, 0), progresso.ponto_inicio_linha, 8)
+                pygame.draw.line(tela_virtual, (255, 255, 0), progresso.ponto_inicio_linha, pos_mouse, 2)
+                texto_linha = fonte_instrucoes.render("Clique para finalizar linha", True, (255, 255, 0))
+                tela_virtual.blit(texto_linha, (10, 10 + len(instrucoes) * 25 + 10))
+            else:
+                texto_linha = fonte_instrucoes.render("Clique para iniciar linha", True, (255, 255, 0))
+                tela_virtual.blit(texto_linha, (10, 10 + len(instrucoes) * 25 + 10))
 
     # Desenha a chegada por cima do caminho
     if progresso.chegada_img_atual is not None:
@@ -600,7 +640,7 @@ def desenhar_jogo(mouse_pos=(0, 0)):
     # Desenha pontinhos por cima de tudo (se houver)
     if len(progresso.pontinhos) > 0:
         for x, y in progresso.pontinhos:
-            pygame.draw.circle(tela_virtual, COR_PONTINHOS, (x, y), 6)
+            pygame.draw.circle(tela_virtual, COR_PONTINHOS, (x, y), 8)
 
 def desenhar_tela_vitoria():
     tela_virtual.blit(progresso.fundo_img_atual, (0, 0))
@@ -707,6 +747,18 @@ while rodando:
                     if progresso.desenhando_caminho:
                         # Adicionar pontinho individual na posição clicada
                         progresso.adicionar_pontinho(int(pos_mouse[0]), int(pos_mouse[1]))
+                    elif progresso.criando_linha_reta:
+                        # Modo de linha reta
+                        if progresso.ponto_inicio_linha is None:
+                            # Primeiro clique: definir ponto de início
+                            progresso.ponto_inicio_linha = (int(pos_mouse[0]), int(pos_mouse[1]))
+                        else:
+                            # Segundo clique: criar linha reta
+                            progresso.criar_linha_reta_pontinhos(
+                                progresso.ponto_inicio_linha[0], progresso.ponto_inicio_linha[1],
+                                int(pos_mouse[0]), int(pos_mouse[1])
+                            )
+                            progresso.ponto_inicio_linha = None
                     elif progresso.adicionando_segmento:
                         # Criar novo segmento
                         if progresso.segmento_temporario is None:
@@ -772,6 +824,16 @@ while rodando:
                         progresso.editando_ponto_inicio = False
                     elif evento.key == pygame.K_p:
                         progresso.desenhando_caminho = not progresso.desenhando_caminho
+                        # Desativa modo linha reta quando ativa modo pontinho individual
+                        if progresso.desenhando_caminho:
+                            progresso.criando_linha_reta = False
+                            progresso.ponto_inicio_linha = None
+                    elif evento.key == pygame.K_l:
+                        progresso.criando_linha_reta = not progresso.criando_linha_reta
+                        # Desativa modo pontinho individual quando ativa modo linha reta
+                        if progresso.criando_linha_reta:
+                            progresso.desenhando_caminho = False
+                        progresso.ponto_inicio_linha = None
                     elif evento.key == pygame.K_r:
                         # Limpar todos os pontinhos
                         progresso.limpar_pontinhos()
@@ -801,27 +863,28 @@ while rodando:
 
         # Movimento e coleta de pontinhos (desabilitado no modo de edição)
         if not (progresso.edit_mode and progresso.fase_atual in [1, 2, 3]):
-            if len(progresso.pontinhos) > 0:
-                # Movimento livre quando existem pontinhos
+            # Só move o personagem se o mouse estiver sendo movido ou se já iniciou o movimento
+            if progresso.personagem_iniciou_movimento or pos_mouse != progresso.posicao_peixinho:
                 progresso.posicao_peixinho = list(pos_mouse)
-                # Verifica colisão com pontinhos
+                progresso.personagem_iniciou_movimento = True
+            
+            # Verifica colisão com pontinhos (se existirem)
+            if len(progresso.pontinhos) > 0:
                 for i, (x, y) in enumerate(progresso.pontinhos[:]):
                     if ((pos_mouse[0] - x) ** 2 + (pos_mouse[1] - y) ** 2) ** 0.5 < 15:  # raio de coleta
                         progresso.remover_pontinho(i)
                         break
-            else:
-                # Outras fases: movimento restrito ao caminho
-                if futuro_peixinho_rect.collidelist(progresso.areas_validas_atual) != -1:
-                    progresso.posicao_peixinho = list(pos_mouse)
         else:
             # No modo de edição, apenas move o personagem sem coletar
             progresso.posicao_peixinho = list(pos_mouse)
 
         peixinho_rect = progresso.peixinho_img_atual.get_rect(center=progresso.posicao_peixinho)
-        if progresso.area_chegada.colliderect(peixinho_rect):
-            # Vence apenas se não restarem pontinhos (quando habilitados)
-            if progresso.verificar_vitoria():
-                estado_jogo = VITORIA
+        # Só verifica colisão com chegada se não estiver no modo de edição
+        if not (progresso.edit_mode and progresso.fase_atual in [1, 2, 3]):
+            if progresso.area_chegada.colliderect(peixinho_rect):
+                # Vence apenas se não restarem pontinhos (quando habilitados)
+                if progresso.verificar_vitoria():
+                    estado_jogo = VITORIA
 
     # --- Desenho na Tela Virtual ---
     if estado_jogo == TELA_INICIAL:
