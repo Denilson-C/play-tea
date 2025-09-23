@@ -71,44 +71,18 @@ FASES = {
     1: {
         "peixe_img": os.path.join(IMAGES_DIR, "peixe 1.png"),
         "fundo_img": os.path.join(IMAGES_DIR, "fundo 1.jpg"),
-        "labirinto": [],  # Fase 1 não usa caminho retangular
-        "raio_borda": 0,
         "chegada_img": os.path.join(IMAGES_DIR, "casa.png"),
         "pontinhos": {"habilitado": True, "espacamento": 40}
     },
     2: {
         "peixe_img": os.path.join(IMAGES_DIR, "cachorro.png"),
         "fundo_img": os.path.join(IMAGES_DIR, "fundo 3.png"),
-        "labirinto": [
-            # Parâmetros do traçado baseado na imagem (U com vão no topo)
-            # Espessura uniforme
-            pygame.Rect(50, ALTURA_TELA_VIRTUAL / 1.89 - 65, 300 - 50, 80),  # barra superior esquerda alinhada à partida
-            pygame.Rect(LARGURA_TELA_VIRTUAL - 300 - 80, ALTURA_TELA_VIRTUAL / 2 - 40, 800 - 50 - (LARGURA_TELA_VIRTUAL - 300 - 80), 80),  # superior direita alinhada à chegada
-            pygame.Rect(300, ALTURA_TELA_VIRTUAL / 1.89 - 65, 80, (ALTURA_TELA_VIRTUAL - 120 - 80) - (ALTURA_TELA_VIRTUAL / 1.89 - 65) + 80),  # pilar esquerdo
-            pygame.Rect(LARGURA_TELA_VIRTUAL - 300 - 80, ALTURA_TELA_VIRTUAL / 2 - 40, 80, (ALTURA_TELA_VIRTUAL - 120 - 80) - (ALTURA_TELA_VIRTUAL / 2 - 40) + 80),  # pilar direito
-            pygame.Rect(300, ALTURA_TELA_VIRTUAL - 120 - 80, (LARGURA_TELA_VIRTUAL - 300 - 80) + 80 - 300, 80),  # barra inferior
-        ],
-        "raio_borda": 0,
-        #"borda_img": os.path.join(IMAGES_DIR, "parede 1.png"),
         "chegada_img": os.path.join(IMAGES_DIR, "casa.png"),
         "pontinhos": {"habilitado": True, "espacamento": 50}
     },
     3: {
         "peixe_img": os.path.join(IMAGES_DIR, "gato.png"),
         "fundo_img": os.path.join(IMAGES_DIR, "fundo 3.png"),
-        "labirinto": [
-            # Barra inicial alinhada ao centro vertical da partida
-            pygame.Rect(50, ALTURA_TELA_VIRTUAL / 1.89 - 65, 200, 80),
-            # Pilar esquerdo conectando do topo até a barra inicial
-            pygame.Rect(200, 120, 80, (ALTURA_TELA_VIRTUAL / 1.89 - 65 + 80) - 120),
-            # Barra superior
-            pygame.Rect(200, 120, 400, 80),
-            # Pilar direito descendo até a altura do centro da chegada
-            pygame.Rect(520, 120, 80, ALTURA_TELA_VIRTUAL / 2 - 80),
-            # Barra final alinhada ao centro vertical da chegada
-            pygame.Rect(520, ALTURA_TELA_VIRTUAL / 2 - 40, 230, 80)
-        ],
-        "raio_borda": 0,
         "chegada_img": os.path.join(IMAGES_DIR, "casa.png"),
         "pontinhos": {"habilitado": True, "espacamento": 50}
     }
@@ -129,8 +103,7 @@ class ProgressoJogo:
         self.area_chegada = pygame.Rect(LARGURA_TELA_VIRTUAL - 120, ALTURA_TELA_VIRTUAL / 2 - 60, 120, 120)
         self.posicao_peixinho = list(self.area_inicio.center)
         
-        # Labirinto e pontinhos
-        self.labirinto_atual = []
+        # Pontinhos
         self.pontinhos = []
         self.pontuacao = 0
         
@@ -169,8 +142,8 @@ class ProgressoJogo:
         self.personagem_iniciou_movimento = False
     
     def atualizar_areas_validas(self):
-        """Atualiza a lista de áreas válidas com base no labirinto atual"""
-        self.areas_validas_atual = self.labirinto_atual + [self.area_inicio, self.area_chegada]
+        """Atualiza a lista de áreas válidas"""
+        self.areas_validas_atual = [self.area_inicio, self.area_chegada]
     
     def resetar_pontuacao(self):
         """Reseta a pontuação para zero"""
@@ -228,7 +201,6 @@ borda_img_atual = progresso.borda_img_atual
 chegada_img_atual = progresso.chegada_img_atual
 pontinhos = progresso.pontinhos
 pontuacao = progresso.pontuacao
-labirinto_atual = progresso.labirinto_atual
 edit_mode = progresso.edit_mode
 dragging = progresso.dragging
 drag_rect_idx = progresso.drag_rect_idx
@@ -292,7 +264,7 @@ def tocar_musica_por_nome(nome):
 
 # --- Funções ---
 def carregar_fase(numero_fase):
-    global peixinho_img_atual, fundo_img_atual, areas_validas_atual, posicao_peixinho, raio_borda_atual, fase_atual, borda_img_atual, chegada_img_atual, pontinhos, pontuacao, labirinto_atual, edit_mode, dragging, drag_rect_idx
+    global peixinho_img_atual, fundo_img_atual, areas_validas_atual, posicao_peixinho, raio_borda_atual, fase_atual, borda_img_atual, chegada_img_atual, pontinhos, pontuacao, edit_mode, dragging, drag_rect_idx
     fase_info = FASES[numero_fase]
     try:
         progresso.peixinho_img_atual = pygame.image.load(fase_info["peixe_img"]).convert_alpha()
@@ -307,19 +279,11 @@ def carregar_fase(numero_fase):
         progresso.fundo_img_atual = pygame.Surface((LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL))
         progresso.fundo_img_atual.fill((0,0,0))
         return
-    caminho_rects = fase_info["labirinto"]
-    progresso.labirinto_atual = [pygame.Rect(r) for r in caminho_rects]
     progresso.atualizar_areas_validas()
     progresso.posicao_peixinho = list(progresso.area_inicio.center)
-    progresso.raio_borda_atual = fase_info.get("raio_borda", 0)
+    progresso.raio_borda_atual = 0
     progresso.fase_atual = numero_fase
     progresso.borda_img_atual = None
-    borda_path = fase_info.get("borda_img")
-    if borda_path:
-        try:
-            progresso.borda_img_atual = pygame.image.load(borda_path).convert_alpha()
-        except pygame.error as e:
-            print(f"Aviso: não foi possível carregar a borda da fase {numero_fase}: {e}")
     # Carrega imagem da chegada (opcional por fase)
     progresso.chegada_img_atual = None
     chegada_path = fase_info.get("chegada_img")
@@ -348,16 +312,9 @@ def carregar_fase(numero_fase):
                 for x in range(100, LARGURA_TELA_VIRTUAL - 100, espac):
                     progresso.adicionar_pontinho(x, progresso.area_inicio.centery)
             else:
-                # Fases 2 e 3: pontinhos em linha única por bloco
-                for rect in progresso.labirinto_atual:
-                    # Pontinhos horizontais (linha central)
-                    if rect.width > rect.height:
-                        for x in range(rect.left + espac//2, rect.right, espac):
-                            progresso.adicionar_pontinho(x, rect.centery)
-                    # Pontinhos verticais (linha central)
-                    else:
-                        for y in range(rect.top + espac//2, rect.bottom, espac):
-                            progresso.adicionar_pontinho(rect.centerx, y)
+                # Fases 2 e 3: pontinhos em linha reta simples
+                for x in range(100, LARGURA_TELA_VIRTUAL - 100, espac):
+                    progresso.adicionar_pontinho(x, progresso.area_inicio.centery)
     # reseta edição
     progresso.resetar_edicao()
     
@@ -372,7 +329,6 @@ def carregar_fase(numero_fase):
     chegada_img_atual = progresso.chegada_img_atual
     pontinhos = progresso.pontinhos
     pontuacao = progresso.pontuacao
-    labirinto_atual = progresso.labirinto_atual
     edit_mode = progresso.edit_mode
     dragging = progresso.dragging
     drag_rect_idx = progresso.drag_rect_idx
@@ -389,7 +345,6 @@ def salvar_fase_editada():
     """Salva as modificações da fase atual em arquivo JSON"""
     if progresso.fase_atual in [1, 2, 3]:
         dados = {
-            "labirinto": [(r.x, r.y, r.width, r.height) for r in progresso.labirinto_atual],
             "pontinhos": progresso.pontinhos,
             "area_inicio": (progresso.area_inicio.x, progresso.area_inicio.y, progresso.area_inicio.width, progresso.area_inicio.height),
             "area_chegada": (progresso.area_chegada.x, progresso.area_chegada.y, progresso.area_chegada.width, progresso.area_chegada.height)
@@ -441,8 +396,7 @@ def carregar_fase_editada():
                 with open(filepath, "r") as f:
                     dados = json.load(f)
                 
-                # Restaura labirinto
-                progresso.labirinto_atual = [pygame.Rect(x, y, w, h) for x, y, w, h in dados["labirinto"]]
+                # Restaura pontinhos
                 progresso.pontinhos = dados["pontinhos"]
                 
                 # Restaura áreas de início e chegada
@@ -471,17 +425,9 @@ def recomputar_pontinhos_fase_atual():
     if not pont_cfg.get("habilitado"):
         return
     espac = int(pont_cfg.get("espacamento", 20))
-    if progresso.fase_atual == 1:
-        for x in range(100, LARGURA_TELA_VIRTUAL - 100, espac):
-            progresso.adicionar_pontinho(x, progresso.area_inicio.centery)
-    else:
-        for rect in progresso.labirinto_atual:
-            if rect.width > rect.height:
-                for x in range(rect.left + espac//2, rect.right, espac):
-                    progresso.adicionar_pontinho(x, rect.centery)
-            else:
-                for y in range(rect.top + espac//2, rect.bottom, espac):
-                    progresso.adicionar_pontinho(rect.centerx, y)
+    # Todas as fases usam linha reta simples
+    for x in range(100, LARGURA_TELA_VIRTUAL - 100, espac):
+        progresso.adicionar_pontinho(x, progresso.area_inicio.centery)
     
     # Atualiza variável global para compatibilidade
     pontinhos = progresso.pontinhos
@@ -573,11 +519,6 @@ def desenhar_jogo(mouse_pos=(0, 0)):
 
     # Se edit mode ativo, destacar elementos editáveis
     if progresso.edit_mode and progresso.fase_atual in [1, 2, 3]:
-        # Destacar retângulos do labirinto
-        for idx, rect in enumerate(progresso.labirinto_atual):
-            cor = (255, 100, 100) if idx == progresso.drag_rect_idx else (255, 0, 0)
-            pygame.draw.rect(tela_virtual, cor, rect, 2)
-        
         # Destacar pontos de início e chegada
         pygame.draw.rect(tela_virtual, (0, 255, 0), progresso.area_inicio, 3)
         pygame.draw.rect(tela_virtual, (0, 255, 0), progresso.area_chegada, 3)
@@ -586,8 +527,6 @@ def desenhar_jogo(mouse_pos=(0, 0)):
         fonte_instrucoes = pygame.font.Font(None, 24)
         instrucoes = [
             "E: Sair do modo edição",
-            "A: Adicionar segmento",
-            "D: Deletar segmento",
             "I: Mover início",
             "C: Mover chegada",
             "P: Adicionar pontinhos",
@@ -759,20 +698,6 @@ while rodando:
                                 int(pos_mouse[0]), int(pos_mouse[1])
                             )
                             progresso.ponto_inicio_linha = None
-                    elif progresso.adicionando_segmento:
-                        # Criar novo segmento
-                        if progresso.segmento_temporario is None:
-                            progresso.segmento_temporario = pygame.Rect(pos_mouse[0], pos_mouse[1], 0, 0)
-                        else:
-                            # Finalizar segmento
-                            progresso.segmento_temporario.width = pos_mouse[0] - progresso.segmento_temporario.x
-                            progresso.segmento_temporario.height = pos_mouse[1] - progresso.segmento_temporario.y
-                            if abs(progresso.segmento_temporario.width) > 10 and abs(progresso.segmento_temporario.height) > 10:
-                                progresso.labirinto_atual.append(progresso.segmento_temporario)
-                                progresso.atualizar_areas_validas()
-                                recomputar_pontinhos_fase_atual()
-                            progresso.segmento_temporario = None
-                            progresso.adicionando_segmento = False
                     elif progresso.editando_ponto_inicio:
                         # Mover ponto de início
                         progresso.area_inicio.center = pos_mouse
@@ -782,14 +707,6 @@ while rodando:
                         # Mover ponto de chegada
                         progresso.area_chegada.center = pos_mouse
                         progresso.atualizar_areas_validas()
-                    else:
-                        # Início de drag de algum retângulo
-                        for idx, r in enumerate(progresso.labirinto_atual):
-                            if r.collidepoint(pos_mouse):
-                                progresso.dragging = True
-                                progresso.drag_rect_idx = idx
-                                progresso.drag_offset = (pos_mouse[0] - r.x, pos_mouse[1] - r.y)
-                                break
 
         if evento.type == pygame.MOUSEBUTTONUP:
             if progresso.dragging:
@@ -805,18 +722,7 @@ while rodando:
                     if not progresso.edit_mode:
                         progresso.resetar_edicao()
                 elif progresso.edit_mode:
-                    if evento.key == pygame.K_a:
-                        progresso.adicionando_segmento = True
-                        progresso.segmento_temporario = None
-                    elif evento.key == pygame.K_d:
-                        # Deletar segmento mais próximo do mouse
-                        if progresso.labirinto_atual:
-                            distancias = [((r.centerx - pos_mouse[0])**2 + (r.centery - pos_mouse[1])**2)**0.5 for r in progresso.labirinto_atual]
-                            idx_mais_proximo = distancias.index(min(distancias))
-                            progresso.labirinto_atual.pop(idx_mais_proximo)
-                            progresso.atualizar_areas_validas()
-                            recomputar_pontinhos_fase_atual()
-                    elif evento.key == pygame.K_i:
+                    if evento.key == pygame.K_i:
                         progresso.editando_ponto_inicio = not progresso.editando_ponto_inicio
                         progresso.editando_ponto_chegada = False
                     elif evento.key == pygame.K_c:
@@ -847,13 +753,7 @@ while rodando:
         
         # Atualiza elementos editados em tempo real
         if progresso.edit_mode and progresso.fase_atual in [1, 2, 3]:
-            if progresso.dragging and progresso.drag_rect_idx is not None:
-                r = progresso.labirinto_atual[progresso.drag_rect_idx]
-                r.x = int(pos_mouse[0] - progresso.drag_offset[0])
-                r.y = int(pos_mouse[1] - progresso.drag_offset[1])
-                # Reflete mudança nas áreas válidas
-                progresso.atualizar_areas_validas()
-            elif progresso.editando_ponto_inicio:
+            if progresso.editando_ponto_inicio:
                 progresso.area_inicio.center = pos_mouse
                 progresso.atualizar_areas_validas()
                 progresso.posicao_peixinho = list(progresso.area_inicio.center)
