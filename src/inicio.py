@@ -54,6 +54,21 @@ MUSICAS_DISPONIVEIS = {
 }
 MUSICA_ATUAL_NOME = "Mudo"
 
+#Requisitos para desbloquear fases
+
+REQUISITOS_FASES = {
+1: 0, # Fase 1 sempre desbloqueada
+2: 290, # Para desbloquear a fase 2 precisa de 290 pontos acumulados
+3: 600, # Exemplo: fase 3 precisa de 600
+4: 1000 # Exemplo: fase 4 precisa de 1000
+}
+
+# --- Progresso do Jogador ---
+PONTOS_ACUMULADOS = 0  # Pontos totais ganhos em todas as fases
+FASES_LIBERADAS = {1}  # Começa com a fase 1 liberada
+
+
+
 # --- Fontes ---
 fonte_titulo = pygame.font.Font(None, 90)
 fonte_botao = pygame.font.Font(None, 50)
@@ -84,6 +99,12 @@ FASES = {
         "peixe_img": os.path.join(IMAGES_DIR, "gato.png"),
         "fundo_img": os.path.join(IMAGES_DIR, "fundo 3.png"),
         "chegada_img": os.path.join(IMAGES_DIR, "casa.png"),
+        "pontinhos": {"habilitado": True, "espacamento": 50}
+    },
+    4: {
+        "peixe_img": os.path.join(IMAGES_DIR, "passaro.png"),
+        "fundo_img": os.path.join(IMAGES_DIR, "fundo 4.jpg"),
+        "chegada_img": os.path.join(IMAGES_DIR, "gaiola.png"),
         "pontinhos": {"habilitado": True, "espacamento": 50}
     }
 }
@@ -224,6 +245,7 @@ botoes_fase = {
     1: pygame.Rect(LARGURA_TELA_VIRTUAL / 2 - 100, 150, 200, 60),
     2: pygame.Rect(LARGURA_TELA_VIRTUAL / 2 - 100, 240, 200, 60),
     3: pygame.Rect(LARGURA_TELA_VIRTUAL / 2 - 100, 330, 200, 60),
+    4: pygame.Rect(LARGURA_TELA_VIRTUAL / 2 - 100, 420, 200, 60),
 }
 cores_disponiveis = {"Areia": (255, 235, 153), "Grama": (152, 251, 152), "Terra": (210, 180, 140)}
 botoes_cor = {}
@@ -299,7 +321,7 @@ def carregar_fase(numero_fase):
     progresso.limpar_pontinhos()
     
     # Tenta carregar fase editada primeiro (após definir fase_atual)
-    if numero_fase in [1, 2, 3]:
+    if numero_fase in [1, 2, 3, 4]:
         carregar_fase_editada()
     
     # Se não carregou dados editados, usa configuração padrão
@@ -389,7 +411,7 @@ def carregar_configuracoes():
 def carregar_fase_editada():
     """Carrega as modificações salvas da fase"""
     try:
-        if progresso.fase_atual in [1, 2, 3]:
+        if progresso.fase_atual in [1, 2, 3, 4]:
             filename = f"fase{progresso.fase_atual}_editada.json"
             filepath = os.path.join(DATA_DIR, filename)
             if os.path.exists(filepath):
@@ -457,6 +479,25 @@ def desenhar_tela_inicial(mouse_pos):
     pygame.draw.rect(tela_virtual, cor_config, botao_config, border_radius=15)
     desenhar_texto("Opções", fonte_botao, BRANCO, tela_virtual, botao_config.centerx, botao_config.centery)
 
+# def desenhar_selecao_fase(mouse_pos):
+#     # Desenhar fundo desfocado
+#     tela_virtual.blit(fundo_menu_img, (0, 0))
+#     # Adicionar overlay escuro para melhorar legibilidade
+#     overlay = pygame.Surface((LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL), pygame.SRCALPHA)
+#     overlay.fill((0, 0, 0, 100))
+#     tela_virtual.blit(overlay, (0, 0))
+    
+#     desenhar_texto("Selecione a Fase", fonte_titulo, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 80)
+
+#     for num, rect in botoes_fase.items():
+#         cor = COR_BOTAO_HOVER if rect.collidepoint(mouse_pos) else COR_BOTAO
+#         pygame.draw.rect(tela_virtual, cor, rect, border_radius=15)
+#         desenhar_texto(f"Fase {num}", fonte_botao, BRANCO, tela_virtual, rect.centerx, rect.centery)
+
+#     cor_voltar = COR_BOTAO_HOVER if botao_voltar.collidepoint(mouse_pos) else COR_BOTAO
+#     pygame.draw.rect(tela_virtual, cor_voltar, botao_voltar, border_radius=15)
+#     desenhar_texto("Voltar", fonte_botao, BRANCO, tela_virtual, botao_voltar.centerx, botao_voltar.centery)
+    
 def desenhar_selecao_fase(mouse_pos):
     # Desenhar fundo desfocado
     tela_virtual.blit(fundo_menu_img, (0, 0))
@@ -468,14 +509,19 @@ def desenhar_selecao_fase(mouse_pos):
     desenhar_texto("Selecione a Fase", fonte_titulo, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 80)
 
     for num, rect in botoes_fase.items():
-        cor = COR_BOTAO_HOVER if rect.collidepoint(mouse_pos) else COR_BOTAO
-        pygame.draw.rect(tela_virtual, cor, rect, border_radius=15)
-        desenhar_texto(f"Fase {num}", fonte_botao, BRANCO, tela_virtual, rect.centerx, rect.centery)
+        if num in FASES_LIBERADAS:  # fase liberada
+            cor = COR_BOTAO_HOVER if rect.collidepoint(mouse_pos) else COR_BOTAO
+            pygame.draw.rect(tela_virtual, cor, rect, border_radius=15)
+            desenhar_texto(f"Fase {num}", fonte_botao, BRANCO, tela_virtual, rect.centerx, rect.centery)
+        else:  # fase bloqueada
+            pygame.draw.rect(tela_virtual, (100, 100, 100), rect, border_radius=15)
+            desenhar_texto(f"Fase {num} 🔒", fonte_botao, (200, 200, 200), tela_virtual, rect.centerx, rect.centery)
 
+    # Botão voltar
     cor_voltar = COR_BOTAO_HOVER if botao_voltar.collidepoint(mouse_pos) else COR_BOTAO
     pygame.draw.rect(tela_virtual, cor_voltar, botao_voltar, border_radius=15)
     desenhar_texto("Voltar", fonte_botao, BRANCO, tela_virtual, botao_voltar.centerx, botao_voltar.centery)
-    
+
 
 def desenhar_configuracoes(mouse_pos):
     # Desenhar fundo desfocado
@@ -655,12 +701,24 @@ while rodando:
                 if botao_iniciar.collidepoint(pos_mouse): estado_jogo = SELECAO_FASE
                 if botao_config.collidepoint(pos_mouse): estado_jogo = CONFIGURACOES
             
+            # elif estado_jogo == SELECAO_FASE:
+            #     for num, rect in botoes_fase.items():
+            #         if rect.collidepoint(pos_mouse):
+            #             carregar_fase(num)
+            #             estado_jogo = JOGANDO
+            #     if botao_voltar.collidepoint(pos_mouse): estado_jogo = TELA_INICIAL
             elif estado_jogo == SELECAO_FASE:
                 for num, rect in botoes_fase.items():
                     if rect.collidepoint(pos_mouse):
-                        carregar_fase(num)
-                        estado_jogo = JOGANDO
-                if botao_voltar.collidepoint(pos_mouse): estado_jogo = TELA_INICIAL
+                        requisito = REQUISITOS_FASES.get(num, 0)
+                        if PONTOS_ACUMULADOS >= requisito:  # fase liberada
+                            carregar_fase(num)
+                            estado_jogo = JOGANDO
+                        else:
+                            print(f"Fase {num} bloqueada! Precisa de {requisito} pontos para liberar.")
+                if botao_voltar.collidepoint(pos_mouse):
+                    estado_jogo = TELA_INICIAL
+
 
             elif estado_jogo == CONFIGURACOES:
                 if botao_voltar.collidepoint(pos_mouse): 
@@ -779,12 +837,29 @@ while rodando:
             progresso.posicao_peixinho = list(pos_mouse)
 
         peixinho_rect = progresso.peixinho_img_atual.get_rect(center=progresso.posicao_peixinho)
-        # Só verifica colisão com chegada se não estiver no modo de edição
+        # # Só verifica colisão com chegada se não estiver no modo de edição
+        # if not (progresso.edit_mode and progresso.fase_atual in [1, 2, 3, 4]):
+        #     if progresso.area_chegada.colliderect(peixinho_rect):
+        #         # Vence apenas se não restarem pontinhos (quando habilitados)
+        #         if progresso.verificar_vitoria():
+        #             estado_jogo = VITORIA
+                # Só verifica colisão com chegada se não estiver no modo de edição
         if not (progresso.edit_mode and progresso.fase_atual in [1, 2, 3]):
             if progresso.area_chegada.colliderect(peixinho_rect):
                 # Vence apenas se não restarem pontinhos (quando habilitados)
                 if progresso.verificar_vitoria():
+                    # Atualiza pontuação acumulada
+                    PONTOS_ACUMULADOS, FASES_LIBERADAS
+                    PONTOS_ACUMULADOS += progresso.pontuacao  
+
+                    # Verifica desbloqueio de fases
+                    for fase, requisito in REQUISITOS_FASES.items():
+                        if PONTOS_ACUMULADOS >= requisito:
+                            FASES_LIBERADAS.add(fase)
+
+                    # Vai para tela de vitória
                     estado_jogo = VITORIA
+
 
     # --- Desenho na Tela Virtual ---
     if estado_jogo == TELA_INICIAL:
