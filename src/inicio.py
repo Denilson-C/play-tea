@@ -35,7 +35,9 @@ TELA_INICIAL = "tela_inicial"
 SELECAO_FASE = "selecao_fase"
 JOGANDO = "jogando"
 CONFIGURACOES = "configuracoes"
+SOBRE = "sobre"
 VITORIA = "vitoria"
+SUBFASE = "subfase"
 
 # --- Cores ---
 BRANCO = (255, 255, 255)
@@ -65,7 +67,30 @@ REQUISITOS_FASES = {
 
 # --- Progresso do Jogador ---
 PONTOS_ACUMULADOS = 0  # Pontos totais ganhos em todas as fases
-FASES_LIBERADAS = {1}  # Começa com a fase 1 liberada
+FASES_LIBERADAS = {1, 2, 3, 4}  # Todas as fases liberadas desde o início
+REPETICOES_POR_FASE = 5  # Número de repetições necessárias para completar uma fase
+REPETICOES_ATUAIS = {}  # Contador de repetições por fase
+
+# --- Controle de Subfases ---
+SUBFASE_DISPONIVEL = {}  # Controla se a subfase está disponível para cada fase
+FASE_ORIGEM_SUBFASE = None  # Armazena qual fase originou a subfase atual
+REPETICOES_SUBFASE = {}  # Controla as repetições das subfases
+
+# --- Nomes das Fases ---
+NOMES_FASES = {
+    1: "Peixinho",
+    2: "Cachorrinho", 
+    3: "Gatinho",
+    4: "Passarinho"
+}
+
+# --- Nomes das Subfases ---
+NOMES_SUBFASES = {
+    1: "Peixinho - Desafio",
+    2: "Cachorrinho - Desafio", 
+    3: "Gatinho - Desafio",
+    4: "Passarinho - Desafio"
+}
 
 
 
@@ -109,137 +134,160 @@ FASES = {
     }
 }
 
-# --- Classe para Gerenciar Progresso do Jogo ---
-class ProgressoJogo:
-    def __init__(self):
-        # Imagens e recursos
-        self.peixinho_img_atual = None
-        self.fundo_img_atual = None
-        self.borda_img_atual = None
-        self.chegada_img_atual = None
-        
-        # Áreas e posições
-        self.areas_validas_atual = []
-        self.area_inicio = pygame.Rect(0, ALTURA_TELA_VIRTUAL /1.89 - 60, 60, 60)
-        self.area_chegada = pygame.Rect(LARGURA_TELA_VIRTUAL - 120, ALTURA_TELA_VIRTUAL / 2 - 60, 120, 120)
-        self.posicao_peixinho = list(self.area_inicio.center)
-        
-        # Pontinhos
-        self.pontinhos = []
-        self.pontuacao = 0
-        
-        # Estado da fase
-        self.fase_atual = None
-        self.raio_borda_atual = 0
-        
-        # Modo de edição
-        self.edit_mode = False
-        self.dragging = False
-        self.drag_rect_idx = None
-        self.drag_offset = (0, 0)
-        self.editando_ponto_inicio = False
-        self.editando_ponto_chegada = False
-        self.adicionando_segmento = False
-        self.segmento_temporario = None
-        self.desenhando_caminho = False
-        self.caminho_temporario = []
-        self.criando_linha_reta = False
-        self.ponto_inicio_linha = None
-        self.personagem_iniciou_movimento = False
-    
-    def resetar_edicao(self):
-        """Reseta todas as variáveis de modo de edição"""
-        self.edit_mode = False
-        self.dragging = False
-        self.drag_rect_idx = None
-        self.editando_ponto_inicio = False
-        self.editando_ponto_chegada = False
-        self.adicionando_segmento = False
-        self.segmento_temporario = None
-        self.desenhando_caminho = False
-        self.caminho_temporario = []
-        self.criando_linha_reta = False
-        self.ponto_inicio_linha = None
-        self.personagem_iniciou_movimento = False
-    
-    def atualizar_areas_validas(self):
-        """Atualiza a lista de áreas válidas"""
-        self.areas_validas_atual = [self.area_inicio, self.area_chegada]
-    
-    def resetar_pontuacao(self):
-        """Reseta a pontuação para zero"""
-        self.pontuacao = 0
-    
-    def adicionar_pontinho(self, x, y):
-        """Adiciona um pontinho na posição especificada"""
-        self.pontinhos.append((x, y))
-    
-    def remover_pontinho(self, index):
-        """Remove um pontinho pelo índice"""
-        if 0 <= index < len(self.pontinhos):
-            self.pontinhos.pop(index)
-            self.pontuacao += 10
-    
-    def limpar_pontinhos(self):
-        """Remove todos os pontinhos"""
-        self.pontinhos.clear()
-    
-    def criar_linha_reta_pontinhos(self, x1, y1, x2, y2, espacamento=20):
-        """Cria pontinhos em linha reta entre dois pontos"""
-        # Calcula a distância entre os pontos
-        distancia = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
-        
-        if distancia < espacamento:
-            # Se os pontos estão muito próximos, adiciona apenas um pontinho no meio
-            self.adicionar_pontinho((x1 + x2) // 2, (y1 + y2) // 2)
-            return
-        
-        # Calcula quantos pontinhos cabem na linha
-        num_pontinhos = int(distancia / espacamento)
-        
-        # Cria os pontinhos distribuídos uniformemente
-        for i in range(num_pontinhos + 1):
-            t = i / num_pontinhos if num_pontinhos > 0 else 0
-            x = int(x1 + t * (x2 - x1))
-            y = int(y1 + t * (y2 - y1))
-            self.adicionar_pontinho(x, y)
-    
-    def verificar_vitoria(self):
-        """Verifica se o jogador venceu (sem pontinhos restantes)"""
-        return len(self.pontinhos) == 0
+# --- Variáveis Globais do Jogo ---
+# Imagens e recursos
+peixinho_img_atual = None
+fundo_img_atual = None
+borda_img_atual = None
+chegada_img_atual = None
 
-# --- Instância Global do Progresso ---
-progresso = ProgressoJogo()
+# Áreas e posições
+areas_validas_atual = []
+area_inicio = pygame.Rect(0, ALTURA_TELA_VIRTUAL /1.89 - 60, 60, 60)
+area_chegada = pygame.Rect(LARGURA_TELA_VIRTUAL - 120, ALTURA_TELA_VIRTUAL / 2 - 60, 120, 120)
+posicao_peixinho = list(area_inicio.center)
 
-# --- Variáveis Globais e Definições de Rects (usando constantes virtuais) ---
-# Mantidas para compatibilidade com código existente
-peixinho_img_atual = progresso.peixinho_img_atual
-fundo_img_atual = progresso.fundo_img_atual
-areas_validas_atual = progresso.areas_validas_atual
-raio_borda_atual = progresso.raio_borda_atual
-fase_atual = progresso.fase_atual
-borda_img_atual = progresso.borda_img_atual
-chegada_img_atual = progresso.chegada_img_atual
-pontinhos = progresso.pontinhos
-pontuacao = progresso.pontuacao
-edit_mode = progresso.edit_mode
-dragging = progresso.dragging
-drag_rect_idx = progresso.drag_rect_idx
-drag_offset = progresso.drag_offset
-editando_ponto_inicio = progresso.editando_ponto_inicio
-editando_ponto_chegada = progresso.editando_ponto_chegada
-adicionando_segmento = progresso.adicionando_segmento
-segmento_temporario = progresso.segmento_temporario
-desenhando_caminho = progresso.desenhando_caminho
-caminho_temporario = progresso.caminho_temporario
-area_inicio = progresso.area_inicio
-area_chegada = progresso.area_chegada
-posicao_peixinho = progresso.posicao_peixinho
+# Pontinhos
+pontinhos = []
+pontuacao = 0
+
+# Estado da fase
+fase_atual = None
+raio_borda_atual = 0
+
+# Modo de edição
+edit_mode = False
+dragging = False
+drag_rect_idx = None
+drag_offset = (0, 0)
+editando_ponto_inicio = False
+editando_ponto_chegada = False
+adicionando_segmento = False
+segmento_temporario = None
+desenhando_caminho = False
+caminho_temporario = []
+criando_linha_reta = False
+ponto_inicio_linha = None
+personagem_iniciou_movimento = False
+
+# --- Funções de Gerenciamento ---
+def resetar_edicao():
+    """Reseta todas as variáveis de modo de edição"""
+    global edit_mode, dragging, drag_rect_idx, editando_ponto_inicio, editando_ponto_chegada
+    global adicionando_segmento, segmento_temporario, desenhando_caminho, caminho_temporario
+    global criando_linha_reta, ponto_inicio_linha, personagem_iniciou_movimento
+    
+    edit_mode = False
+    dragging = False
+    drag_rect_idx = None
+    editando_ponto_inicio = False
+    editando_ponto_chegada = False
+    adicionando_segmento = False
+    segmento_temporario = None
+    desenhando_caminho = False
+    caminho_temporario = []
+    criando_linha_reta = False
+    ponto_inicio_linha = None
+    personagem_iniciou_movimento = False
+
+def atualizar_areas_validas():
+    """Atualiza a lista de áreas válidas"""
+    global areas_validas_atual
+    areas_validas_atual = [area_inicio, area_chegada]
+
+def resetar_pontuacao():
+    """Reseta a pontuação para zero"""
+    global pontuacao
+    pontuacao = 0
+
+def adicionar_pontinho(x, y):
+    """Adiciona um pontinho na posição especificada"""
+    global pontinhos
+    pontinhos.append((x, y))
+
+def remover_pontinho(index):
+    """Remove um pontinho pelo índice"""
+    global pontinhos, pontuacao
+    if 0 <= index < len(pontinhos):
+        pontinhos.pop(index)
+        pontuacao += 10
+
+def limpar_pontinhos():
+    """Remove todos os pontinhos"""
+    global pontinhos
+    pontinhos.clear()
+
+def criar_linha_reta_pontinhos(x1, y1, x2, y2, espacamento=20):
+    """Cria pontinhos em linha reta entre dois pontos"""
+    # Calcula a distância entre os pontos
+    distancia = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+    
+    if distancia < espacamento:
+        # Se os pontos estão muito próximos, adiciona apenas um pontinho no meio
+        adicionar_pontinho((x1 + x2) // 2, (y1 + y2) // 2)
+        return
+    
+    # Calcula quantos pontinhos cabem na linha
+    num_pontinhos = int(distancia / espacamento)
+    
+    # Cria os pontinhos distribuídos uniformemente
+    for i in range(num_pontinhos + 1):
+        t = i / num_pontinhos if num_pontinhos > 0 else 0
+        x = int(x1 + t * (x2 - x1))
+        y = int(y1 + t * (y2 - y1))
+        adicionar_pontinho(x, y)
+
+def verificar_vitoria():
+    """Verifica se o jogador venceu (sem pontinhos restantes)"""
+    return len(pontinhos) == 0
+
+# --- Funções auxiliares para modificar variáveis globais ---
+def set_ponto_inicio_linha(valor):
+    global ponto_inicio_linha
+    ponto_inicio_linha = valor
+
+def set_criando_linha_reta(valor):
+    global criando_linha_reta
+    criando_linha_reta = valor
+
+def set_desenhando_caminho(valor):
+    global desenhando_caminho
+    desenhando_caminho = valor
+
+def set_editando_ponto_inicio(valor):
+    global editando_ponto_inicio
+    editando_ponto_inicio = valor
+
+def set_editando_ponto_chegada(valor):
+    global editando_ponto_chegada
+    editando_ponto_chegada = valor
+
+def set_dragging(valor):
+    global dragging
+    dragging = valor
+
+def set_drag_rect_idx(valor):
+    global drag_rect_idx
+    drag_rect_idx = valor
+
+def set_area_inicio_center(pos):
+    global area_inicio
+    area_inicio.center = pos
+
+def set_area_chegada_center(pos):
+    global area_chegada
+    area_chegada.center = pos
+
+def set_posicao_peixinho(pos):
+    global posicao_peixinho
+    posicao_peixinho = list(pos)
 
 botao_iniciar = pygame.Rect(LARGURA_TELA_VIRTUAL / 2 - 100, 250, 200, 60)
 botao_config = pygame.Rect(LARGURA_TELA_VIRTUAL / 2 - 100, 340, 200, 60)
+botao_sobre = pygame.Rect(LARGURA_TELA_VIRTUAL / 2 - 100, 430, 200, 60)
 botao_voltar = pygame.Rect(LARGURA_TELA_VIRTUAL / 2 - 100, 500, 200, 60)
 botao_sair_fase = pygame.Rect(20, 20, 100, 40)  # Canto superior esquerdo
+botao_musica_fase = pygame.Rect(20, 70, 100, 40)  # Abaixo do botão sair
 botao_voltar_menu = pygame.Rect(LARGURA_TELA_VIRTUAL - 120, 20, 100, 40)  # Canto superior direito
 botoes_fase = {
     1: pygame.Rect(LARGURA_TELA_VIRTUAL / 2 - 100, 150, 200, 60),
@@ -287,96 +335,79 @@ def tocar_musica_por_nome(nome):
 # --- Funções ---
 def carregar_fase(numero_fase):
     global peixinho_img_atual, fundo_img_atual, areas_validas_atual, posicao_peixinho, raio_borda_atual, fase_atual, borda_img_atual, chegada_img_atual, pontinhos, pontuacao, edit_mode, dragging, drag_rect_idx
+    global editando_ponto_inicio, editando_ponto_chegada, adicionando_segmento, segmento_temporario, desenhando_caminho, caminho_temporario, area_inicio, area_chegada
+    
     fase_info = FASES[numero_fase]
     try:
-        progresso.peixinho_img_atual = pygame.image.load(fase_info["peixe_img"]).convert_alpha()
-        progresso.peixinho_img_atual = pygame.transform.scale(progresso.peixinho_img_atual, (80, 80))
+        peixinho_img_atual = pygame.image.load(fase_info["peixe_img"]).convert_alpha()
+        peixinho_img_atual = pygame.transform.scale(peixinho_img_atual, (80, 80))
         
-        progresso.fundo_img_atual = pygame.image.load(fase_info["fundo_img"]).convert()
+        fundo_img_atual = pygame.image.load(fase_info["fundo_img"]).convert()
         # <--- ALTERAÇÃO: Escala para o tamanho da TELA VIRTUAL ---
-        progresso.fundo_img_atual = pygame.transform.scale(progresso.fundo_img_atual, (LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL))
+        fundo_img_atual = pygame.transform.scale(fundo_img_atual, (LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL))
         
     except pygame.error as e:
         print(f"Erro ao carregar recursos da fase {numero_fase}: {e}")
-        progresso.fundo_img_atual = pygame.Surface((LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL))
-        progresso.fundo_img_atual.fill((0,0,0))
+        fundo_img_atual = pygame.Surface((LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL))
+        fundo_img_atual.fill((0,0,0))
         return
-    progresso.atualizar_areas_validas()
-    progresso.posicao_peixinho = list(progresso.area_inicio.center)
-    progresso.raio_borda_atual = 0
-    progresso.fase_atual = numero_fase
-    progresso.borda_img_atual = None
+    atualizar_areas_validas()
+    posicao_peixinho = list(area_inicio.center)
+    raio_borda_atual = 0
+    fase_atual = numero_fase
+    borda_img_atual = None
+    
+    # Inicializa contador de repetições para esta fase
+    inicializar_repeticoes_fase(numero_fase)
+    
     # Carrega imagem da chegada (opcional por fase)
-    progresso.chegada_img_atual = None
+    chegada_img_atual = None
     chegada_path = fase_info.get("chegada_img")
     if chegada_path:
         try:
             img = pygame.image.load(chegada_path).convert_alpha()
-            progresso.chegada_img_atual = pygame.transform.smoothscale(img, (progresso.area_chegada.width, progresso.area_chegada.height))
+            chegada_img_atual = pygame.transform.smoothscale(img, (area_chegada.width, area_chegada.height))
         except pygame.error as e:
             print(f"Aviso: não foi possível carregar a imagem de chegada da fase {numero_fase}: {e}")
     
     # Inicializa pontinhos por fase (se habilitado)
-    progresso.resetar_pontuacao()
-    progresso.limpar_pontinhos()
+    resetar_pontuacao()
+    limpar_pontinhos()
     
     # Tenta carregar fase editada primeiro (após definir fase_atual)
     if numero_fase in [1, 2, 3, 4]:
         carregar_fase_editada()
     
     # Se não carregou dados editados, usa configuração padrão
-    if not progresso.pontinhos:
+    if not pontinhos:
         pont_cfg = fase_info.get("pontinhos", {"habilitado": False})
         if pont_cfg.get("habilitado"):
             espac = int(pont_cfg.get("espacamento", 20))
             if numero_fase == 1:
                 # Fase 1: linha reta
                 for x in range(100, LARGURA_TELA_VIRTUAL - 100, espac):
-                    progresso.adicionar_pontinho(x, progresso.area_inicio.centery)
+                    adicionar_pontinho(x, area_inicio.centery)
             else:
                 # Fases 2 e 3: pontinhos em linha reta simples
                 for x in range(100, LARGURA_TELA_VIRTUAL - 100, espac):
-                    progresso.adicionar_pontinho(x, progresso.area_inicio.centery)
+                    adicionar_pontinho(x, area_inicio.centery)
     # reseta edição
-    progresso.resetar_edicao()
-    
-    # Atualiza variáveis globais para compatibilidade
-    peixinho_img_atual = progresso.peixinho_img_atual
-    fundo_img_atual = progresso.fundo_img_atual
-    areas_validas_atual = progresso.areas_validas_atual
-    posicao_peixinho = progresso.posicao_peixinho
-    raio_borda_atual = progresso.raio_borda_atual
-    fase_atual = progresso.fase_atual
-    borda_img_atual = progresso.borda_img_atual
-    chegada_img_atual = progresso.chegada_img_atual
-    pontinhos = progresso.pontinhos
-    pontuacao = progresso.pontuacao
-    edit_mode = progresso.edit_mode
-    dragging = progresso.dragging
-    drag_rect_idx = progresso.drag_rect_idx
-    editando_ponto_inicio = progresso.editando_ponto_inicio
-    editando_ponto_chegada = progresso.editando_ponto_chegada
-    adicionando_segmento = progresso.adicionando_segmento
-    segmento_temporario = progresso.segmento_temporario
-    desenhando_caminho = progresso.desenhando_caminho
-    caminho_temporario = progresso.caminho_temporario
-    area_inicio = progresso.area_inicio
-    area_chegada = progresso.area_chegada
+    resetar_edicao()
     
 def salvar_fase_editada():
     """Salva as modificações da fase atual em arquivo JSON"""
-    if progresso.fase_atual in [1, 2, 3]:
+    if fase_atual in [1, 2, 3, 4]:
         dados = {
-            "pontinhos": progresso.pontinhos,
-            "area_inicio": (progresso.area_inicio.x, progresso.area_inicio.y, progresso.area_inicio.width, progresso.area_inicio.height),
-            "area_chegada": (progresso.area_chegada.x, progresso.area_chegada.y, progresso.area_chegada.width, progresso.area_chegada.height)
+            "pontinhos": pontinhos,
+            "area_inicio": (area_inicio.x, area_inicio.y, area_inicio.width, area_inicio.height),
+            "area_chegada": (area_chegada.x, area_chegada.y, area_chegada.width, area_chegada.height)
         }
         try:
-            filename = f"fase{progresso.fase_atual}_editada.json"
+            filename = f"fase{fase_atual}_editada.json"
             filepath = os.path.join(DATA_DIR, filename)
             with open(filepath, "w") as f:
                 json.dump(dados, f)
-            print(f"Fase {progresso.fase_atual} salva com sucesso!")
+            print(f"Fase {fase_atual} salva com sucesso!")
         except Exception as e:
             print(f"Erro ao salvar: {e}")
 
@@ -384,7 +415,10 @@ def salvar_configuracoes():
     """Salva as configurações do jogo em arquivo JSON"""
     dados = {
         "cor_pontinhos": COR_PONTINHOS,
-        "musica_atual": MUSICA_ATUAL_NOME
+        "musica_atual": MUSICA_ATUAL_NOME,
+        "repeticoes_atuais": REPETICOES_ATUAIS,
+        "subfase_disponivel": SUBFASE_DISPONIVEL,
+        "repeticoes_subfase": REPETICOES_SUBFASE
     }
     try:
         config_path = os.path.join(DATA_DIR, "configuracoes.json")
@@ -401,59 +435,132 @@ def carregar_configuracoes():
         if os.path.exists(config_path):
             with open(config_path, "r") as f:
                 dados = json.load(f)
-            global COR_PONTINHOS, MUSICA_ATUAL_NOME
+            global COR_PONTINHOS, MUSICA_ATUAL_NOME, REPETICOES_ATUAIS, SUBFASE_DISPONIVEL, REPETICOES_SUBFASE
             COR_PONTINHOS = tuple(dados.get("cor_pontinhos", COR_PONTINHOS))
             MUSICA_ATUAL_NOME = dados.get("musica_atual", MUSICA_ATUAL_NOME)
+            REPETICOES_ATUAIS = dados.get("repeticoes_atuais", {})
+            SUBFASE_DISPONIVEL = dados.get("subfase_disponivel", {})
+            REPETICOES_SUBFASE = dados.get("repeticoes_subfase", {})
             print("Configurações carregadas com sucesso!")
     except Exception as e:
         print(f"Erro ao carregar configurações: {e}")
 
+def inicializar_repeticoes_fase(fase):
+    """Inicializa o contador de repetições para uma fase se não existir"""
+    if fase not in REPETICOES_ATUAIS:
+        REPETICOES_ATUAIS[fase] = 0
+
+def inicializar_repeticoes_subfase(fase):
+    """Inicializa o contador de repetições para uma subfase se não existir"""
+    if fase not in REPETICOES_SUBFASE:
+        REPETICOES_SUBFASE[fase] = 0
+
 def carregar_fase_editada():
     """Carrega as modificações salvas da fase"""
+    global pontinhos, area_inicio, area_chegada, areas_validas_atual
     try:
-        if progresso.fase_atual in [1, 2, 3, 4]:
-            filename = f"fase{progresso.fase_atual}_editada.json"
+        if fase_atual in [1, 2, 3, 4]:
+            filename = f"fase{fase_atual}_editada.json"
             filepath = os.path.join(DATA_DIR, filename)
             if os.path.exists(filepath):
                 with open(filepath, "r") as f:
                     dados = json.load(f)
                 
                 # Restaura pontinhos
-                progresso.pontinhos = dados["pontinhos"]
+                pontinhos = dados["pontinhos"]
                 
                 # Restaura áreas de início e chegada
-                progresso.area_inicio = pygame.Rect(*dados["area_inicio"])
-                progresso.area_chegada = pygame.Rect(*dados["area_chegada"])
+                area_inicio = pygame.Rect(*dados["area_inicio"])
+                area_chegada = pygame.Rect(*dados["area_chegada"])
                 
-                progresso.atualizar_areas_validas()
-                print(f"Fase {progresso.fase_atual} carregada com sucesso!")
-                
-                # Atualiza variáveis globais para compatibilidade
-                global labirinto_atual, pontinhos, areas_validas_atual, area_inicio, area_chegada
-                labirinto_atual = progresso.labirinto_atual
-                pontinhos = progresso.pontinhos
-                areas_validas_atual = progresso.areas_validas_atual
-                area_inicio = progresso.area_inicio
-                area_chegada = progresso.area_chegada
+                atualizar_areas_validas()
+                print(f"Fase {fase_atual} carregada com sucesso!")
     except Exception as e:
         print(f"Erro ao carregar fase editada: {e}")
         # Se der erro, continua com configuração padrão
 
+def carregar_subfase(fase_origem):
+    """Carrega uma subfase baseada na fase de origem"""
+    global FASE_ORIGEM_SUBFASE, pontinhos, area_inicio, area_chegada, areas_validas_atual
+    FASE_ORIGEM_SUBFASE = fase_origem
+    
+    # Inicializa as repetições da subfase
+    inicializar_repeticoes_subfase(fase_origem)
+    
+    # Carrega a fase normal primeiro
+    carregar_fase(fase_origem)
+    
+    # Tenta carregar dados específicos da subfase
+    try:
+        filename = f"subfase{fase_origem}_editada.json"
+        filepath = os.path.join(DATA_DIR, filename)
+        if os.path.exists(filepath):
+            with open(filepath, "r") as f:
+                dados = json.load(f)
+            
+            # Restaura pontinhos da subfase
+            pontinhos = dados["pontinhos"]
+            
+            # Restaura áreas de início e chegada da subfase
+            area_inicio = pygame.Rect(*dados["area_inicio"])
+            area_chegada = pygame.Rect(*dados["area_chegada"])
+            
+            atualizar_areas_validas()
+            print(f"Subfase {fase_origem} carregada com sucesso!")
+        else:
+            # Se não existe arquivo da subfase, cria um padrão mais desafiador
+            criar_subfase_padrao(fase_origem)
+    except Exception as e:
+        print(f"Erro ao carregar subfase: {e}")
+        # Se der erro, cria subfase padrão
+        criar_subfase_padrao(fase_origem)
+
+def criar_subfase_padrao(fase_origem):
+    """Cria uma subfase padrão mais desafiadora"""
+    # Limpa pontinhos existentes
+    limpar_pontinhos()
+    
+    # Cria pontinhos em padrão mais complexo (zigzag)
+    espacamento = 30
+    y_base = area_inicio.centery
+    for x in range(100, LARGURA_TELA_VIRTUAL - 100, espacamento):
+        # Alterna entre linha superior e inferior
+        if (x // espacamento) % 2 == 0:
+            y = y_base - 50
+        else:
+            y = y_base + 50
+        adicionar_pontinho(x, y)
+    
+    print(f"Subfase padrão criada para fase {fase_origem}")
+
+def salvar_subfase():
+    """Salva as modificações da subfase atual em arquivo JSON"""
+    if FASE_ORIGEM_SUBFASE is not None:
+        dados = {
+            "pontinhos": pontinhos,
+            "area_inicio": (area_inicio.x, area_inicio.y, area_inicio.width, area_inicio.height),
+            "area_chegada": (area_chegada.x, area_chegada.y, area_chegada.width, area_chegada.height)
+        }
+        try:
+            filename = f"subfase{FASE_ORIGEM_SUBFASE}_editada.json"
+            filepath = os.path.join(DATA_DIR, filename)
+            with open(filepath, "w") as f:
+                json.dump(dados, f)
+            print(f"Subfase {FASE_ORIGEM_SUBFASE} salva com sucesso!")
+        except Exception as e:
+            print(f"Erro ao salvar subfase: {e}")
+
 def recomputar_pontinhos_fase_atual():
     global pontinhos
-    fase_info = FASES[progresso.fase_atual]
+    fase_info = FASES[fase_atual]
     pont_cfg = fase_info.get("pontinhos", {"habilitado": False})
-    progresso.limpar_pontinhos()
+    limpar_pontinhos()
     if not pont_cfg.get("habilitado"):
         return
     espac = int(pont_cfg.get("espacamento", 20))
     # Todas as fases usam linha reta simples
     for x in range(100, LARGURA_TELA_VIRTUAL - 100, espac):
-        progresso.adicionar_pontinho(x, progresso.area_inicio.centery)
-    
-    # Atualiza variável global para compatibilidade
-    pontinhos = progresso.pontinhos
-    # Não precisamos mais setar a posição do mouse, pois ele será convertido a cada frame
+        adicionar_pontinho(x, area_inicio.centery)
     
 def desenhar_texto(texto, fonte, cor, superficie, x, y):
     textobj = fonte.render(texto, True, cor)
@@ -478,6 +585,10 @@ def desenhar_tela_inicial(mouse_pos):
     cor_config = COR_BOTAO_HOVER if botao_config.collidepoint(mouse_pos) else COR_BOTAO
     pygame.draw.rect(tela_virtual, cor_config, botao_config, border_radius=15)
     desenhar_texto("Opções", fonte_botao, BRANCO, tela_virtual, botao_config.centerx, botao_config.centery)
+    
+    cor_sobre = COR_BOTAO_HOVER if botao_sobre.collidepoint(mouse_pos) else COR_BOTAO
+    pygame.draw.rect(tela_virtual, cor_sobre, botao_sobre, border_radius=15)
+    desenhar_texto("Sobre", fonte_botao, BRANCO, tela_virtual, botao_sobre.centerx, botao_sobre.centery)
 
 # def desenhar_selecao_fase(mouse_pos):
 #     # Desenhar fundo desfocado
@@ -509,13 +620,10 @@ def desenhar_selecao_fase(mouse_pos):
     desenhar_texto("Selecione a Fase", fonte_titulo, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 80)
 
     for num, rect in botoes_fase.items():
-        if num in FASES_LIBERADAS:  # fase liberada
-            cor = COR_BOTAO_HOVER if rect.collidepoint(mouse_pos) else COR_BOTAO
-            pygame.draw.rect(tela_virtual, cor, rect, border_radius=15)
-            desenhar_texto(f"Fase {num}", fonte_botao, BRANCO, tela_virtual, rect.centerx, rect.centery)
-        else:  # fase bloqueada
-            pygame.draw.rect(tela_virtual, (100, 100, 100), rect, border_radius=15)
-            desenhar_texto(f"Fase {num} 🔒", fonte_botao, (200, 200, 200), tela_virtual, rect.centerx, rect.centery)
+        cor = COR_BOTAO_HOVER if rect.collidepoint(mouse_pos) else COR_BOTAO
+        pygame.draw.rect(tela_virtual, cor, rect, border_radius=15)
+        nome_fase = NOMES_FASES.get(num, f"Fase {num}")
+        desenhar_texto(nome_fase, fonte_botao, BRANCO, tela_virtual, rect.centerx, rect.centery)
 
     # Botão voltar
     cor_voltar = COR_BOTAO_HOVER if botao_voltar.collidepoint(mouse_pos) else COR_BOTAO
@@ -555,19 +663,82 @@ def desenhar_configuracoes(mouse_pos):
     cor_voltar = COR_BOTAO_HOVER if botao_voltar.collidepoint(mouse_pos) else COR_BOTAO
     pygame.draw.rect(tela_virtual, cor_voltar, botao_voltar, border_radius=15)
     desenhar_texto("Voltar", fonte_botao, BRANCO, tela_virtual, botao_voltar.centerx, botao_voltar.centery)
+
+def desenhar_tela_sobre(mouse_pos):
+    # Desenhar fundo desfocado
+    tela_virtual.blit(fundo_menu_img, (0, 0))
+    # Adicionar overlay escuro para melhorar legibilidade
+    overlay = pygame.Surface((LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 100))
+    tela_virtual.blit(overlay, (0, 0))
+    
+    # Carregar e exibir logo da Fatec Barueri no canto superior direito
+    try:
+        logo_fatec = pygame.image.load(os.path.join(IMAGES_DIR, "logo.png")).convert_alpha()
+        # Redimensionar o logo para um tamanho apropriado
+        logo_fatec = pygame.transform.smoothscale(logo_fatec, (120, 60))
+        # Posicionar no canto superior direito
+        logo_rect = logo_fatec.get_rect()
+        logo_rect.topright = (LARGURA_TELA_VIRTUAL - 20, 20)
+        tela_virtual.blit(logo_fatec, logo_rect)
+    except pygame.error as e:
+        print(f"Aviso: não foi possível carregar o logo da Fatec: {e}")
+    
+    # Título principal
+    desenhar_texto("PLAY TEA", fonte_titulo, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 100)
+    
+    # Fontes para diferentes seções
+    fonte_titulo_secao = pygame.font.Font(None, 42)
+    fonte_info = pygame.font.Font(None, 36)
+    fonte_desenvolvedores = pygame.font.Font(None, 32)
+    fonte_pequena = pygame.font.Font(None, 28)
+    
+    # Seção: Informações do Projeto
+    desenhar_texto("Trabalho de Graduação 2", fonte_titulo_secao, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 160)
+    desenhar_texto("Fatec Barueri - Faculdade de Tecnologia", fonte_info, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 200)
+    
+    
+    # Seção: Desenvolvedores (centralizados)
+    desenhar_texto("Desenvolvedores", fonte_titulo_secao, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 280)
+    y_desenvolvedores = 320
+    desenvolvedores = [
+        "DENILSON CONCEIÇÃO DE OLIVEIRA",
+        "JONATHAS YOSHIOKA OLSEN TRAJANO DA SILVA",
+        "LEONARDO ZANATA DE JESUS",
+        "MATHEUS GARCIA BERTOI"
+    ]
+    for dev in desenvolvedores:
+        desenhar_texto(dev, fonte_desenvolvedores, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, y_desenvolvedores)
+        y_desenvolvedores += 30
+    
+    # Seção: Orientador (centralizado)
+    desenhar_texto("Orientador", fonte_titulo_secao, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 480)
+    desenhar_texto("Prof. Dr. Irapuan Glória Júnior", fonte_info, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 520)
+    
+    # Versão no canto inferior direito
+    texto_versao = fonte_pequena.render("Versão 1.0", True, BRANCO)
+    rect_versao = texto_versao.get_rect()
+    rect_versao.bottomright = (LARGURA_TELA_VIRTUAL - 20, ALTURA_TELA_VIRTUAL - 20)
+    tela_virtual.blit(texto_versao, rect_versao)
+    
+    # Botão voltar no canto superior esquerdo
+    botao_voltar_sobre = pygame.Rect(20, 20, 100, 40)
+    cor_voltar = COR_BOTAO_HOVER if botao_voltar_sobre.collidepoint(mouse_pos) else COR_BOTAO
+    pygame.draw.rect(tela_virtual, cor_voltar, botao_voltar_sobre, border_radius=10)
+    desenhar_texto("Voltar", fonte_config, BRANCO, tela_virtual, botao_voltar_sobre.centerx, botao_voltar_sobre.centery)
     
 def desenhar_jogo(mouse_pos=(0, 0)):
-    tela_virtual.blit(progresso.fundo_img_atual, (0, 0))
-    pygame.draw.rect(tela_virtual, VERDE_INICIO, progresso.area_inicio)
+    tela_virtual.blit(fundo_img_atual, (0, 0))
+    pygame.draw.rect(tela_virtual, VERDE_INICIO, area_inicio)
     
     # Fallback: desenha caminho retangular (caso não haja pontinhos)
     # Removido: não desenha mais o caminho quando não há pontinhos
 
     # Se edit mode ativo, destacar elementos editáveis
-    if progresso.edit_mode and progresso.fase_atual in [1, 2, 3]:
+    if edit_mode and fase_atual in [1, 2, 3, 4]:
         # Destacar pontos de início e chegada
-        pygame.draw.rect(tela_virtual, (0, 255, 0), progresso.area_inicio, 3)
-        pygame.draw.rect(tela_virtual, (0, 255, 0), progresso.area_chegada, 3)
+        pygame.draw.rect(tela_virtual, (0, 255, 0), area_inicio, 3)
+        pygame.draw.rect(tela_virtual, (0, 255, 0), area_chegada, 3)
         
         # Mostrar instruções
         fonte_instrucoes = pygame.font.Font(None, 24)
@@ -586,11 +757,11 @@ def desenhar_jogo(mouse_pos=(0, 0)):
             tela_virtual.blit(fonte_instrucoes.render(texto, True, BRANCO), (10, 10 + i * 25))
         
         # Mostrar indicador de modo linha reta
-        if progresso.criando_linha_reta:
-            if progresso.ponto_inicio_linha is not None:
+        if criando_linha_reta:
+            if ponto_inicio_linha is not None:
                 # Mostrar ponto de início e linha até o mouse
-                pygame.draw.circle(tela_virtual, (255, 255, 0), progresso.ponto_inicio_linha, 8)
-                pygame.draw.line(tela_virtual, (255, 255, 0), progresso.ponto_inicio_linha, pos_mouse, 2)
+                pygame.draw.circle(tela_virtual, (255, 255, 0), ponto_inicio_linha, 8)
+                pygame.draw.line(tela_virtual, (255, 255, 0), ponto_inicio_linha, mouse_pos, 2)
                 texto_linha = fonte_instrucoes.render("Clique para finalizar linha", True, (255, 255, 0))
                 tela_virtual.blit(texto_linha, (10, 10 + len(instrucoes) * 25 + 10))
             else:
@@ -598,18 +769,23 @@ def desenhar_jogo(mouse_pos=(0, 0)):
                 tela_virtual.blit(texto_linha, (10, 10 + len(instrucoes) * 25 + 10))
 
     # Desenha a chegada por cima do caminho
-    if progresso.chegada_img_atual is not None:
-        tela_virtual.blit(progresso.chegada_img_atual, progresso.area_chegada.topleft)
+    if chegada_img_atual is not None:
+        tela_virtual.blit(chegada_img_atual, area_chegada.topleft)
     else:
-        pygame.draw.rect(tela_virtual, VERDE_FIM, progresso.area_chegada)
+        pygame.draw.rect(tela_virtual, VERDE_FIM, area_chegada)
 
     # Desenha pontuação no canto superior direito (se houver pontinhos)
     if True:
         fonte_pontuacao = pygame.font.Font(None, 36)
-        texto_pontuacao = fonte_pontuacao.render(f"Pontos: {progresso.pontuacao}", True, BRANCO)
+        texto_pontuacao = fonte_pontuacao.render(f"Pontos: {pontuacao}", True, BRANCO)
         tela_virtual.blit(texto_pontuacao, (LARGURA_TELA_VIRTUAL - 150, 20))
+        
+        # Mostra progresso de repetições da fase atual
+        repeticoes_atual = REPETICOES_ATUAIS.get(fase_atual, 0)
+        texto_repeticoes = fonte_pontuacao.render(f"Repetições: {repeticoes_atual}/{REPETICOES_POR_FASE}", True, BRANCO)
+        tela_virtual.blit(texto_repeticoes, (LARGURA_TELA_VIRTUAL - 200, 60))
     
-    # Botão para sair da fase (canto superior direito)
+    # Botão para sair da fase (canto superior esquerdo)
     try:
         cor_sair_fase = COR_BOTAO_HOVER if botao_sair_fase.collidepoint(mouse_pos) else COR_BOTAO
         pygame.draw.rect(tela_virtual, cor_sair_fase, botao_sair_fase, border_radius=10)
@@ -618,22 +794,53 @@ def desenhar_jogo(mouse_pos=(0, 0)):
         # Fallback se mouse_pos não estiver definido
         pygame.draw.rect(tela_virtual, COR_BOTAO, botao_sair_fase, border_radius=10)
         desenhar_texto("Sair", fonte_config, BRANCO, tela_virtual, botao_sair_fase.centerx, botao_sair_fase.centery)
+    
+    # Botão para alternar música (abaixo do botão sair)
+    try:
+        cor_musica_fase = COR_BOTAO_HOVER if botao_musica_fase.collidepoint(mouse_pos) else COR_BOTAO
+        pygame.draw.rect(tela_virtual, cor_musica_fase, botao_musica_fase, border_radius=10)
+        # Mostra o nome da música atual ou "Música"
+        texto_musica = MUSICA_ATUAL_NOME if len(MUSICA_ATUAL_NOME) <= 8 else "Música"
+        desenhar_texto(texto_musica, fonte_config, BRANCO, tela_virtual, botao_musica_fase.centerx, botao_musica_fase.centery)
+    except:
+        # Fallback se mouse_pos não estiver definido
+        pygame.draw.rect(tela_virtual, COR_BOTAO, botao_musica_fase, border_radius=10)
+        desenhar_texto("Música", fonte_config, BRANCO, tela_virtual, botao_musica_fase.centerx, botao_musica_fase.centery)
 
-    peixinho_rect = progresso.peixinho_img_atual.get_rect(center=progresso.posicao_peixinho)
-    tela_virtual.blit(progresso.peixinho_img_atual, peixinho_rect)
+    peixinho_rect = peixinho_img_atual.get_rect(center=posicao_peixinho)
+    tela_virtual.blit(peixinho_img_atual, peixinho_rect)
     
     # Desenha pontinhos por cima de tudo (se houver)
-    if len(progresso.pontinhos) > 0:
-        for x, y in progresso.pontinhos:
+    if len(pontinhos) > 0:
+        for x, y in pontinhos:
             pygame.draw.circle(tela_virtual, COR_PONTINHOS, (x, y), 8)
 
 def desenhar_tela_vitoria():
-    tela_virtual.blit(progresso.fundo_img_atual, (0, 0))
+    tela_virtual.blit(fundo_img_atual, (0, 0))
     sombra = pygame.Surface((LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL), pygame.SRCALPHA)
     sombra.fill((0, 0, 0, 128))
     tela_virtual.blit(sombra, (0, 0))
-    desenhar_texto("Parabéns!", fonte_titulo, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL/2, ALTURA_TELA_VIRTUAL/2 - 50)
-    desenhar_texto("Clique para continuar", fonte_config, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL/2, ALTURA_TELA_VIRTUAL/2 + 50)
+    desenhar_texto("Parabéns!", fonte_titulo, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL/2, ALTURA_TELA_VIRTUAL/2 - 100)
+    
+    # Verifica se estamos em uma subfase ou fase normal
+    if FASE_ORIGEM_SUBFASE is not None:
+        # Estamos em uma subfase
+        nome_subfase = NOMES_SUBFASES.get(FASE_ORIGEM_SUBFASE, f"Subfase {FASE_ORIGEM_SUBFASE}")
+        desenhar_texto(f"{nome_subfase} completada!", fonte_config, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL/2, ALTURA_TELA_VIRTUAL/2 - 50)
+        desenhar_texto(f"Repetições: {REPETICOES_SUBFASE.get(FASE_ORIGEM_SUBFASE, 0)}/{REPETICOES_POR_FASE}", fonte_config, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL/2, ALTURA_TELA_VIRTUAL/2)
+        desenhar_texto("Clique para voltar à seleção de fases", fonte_config, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL/2, ALTURA_TELA_VIRTUAL/2 + 50)
+    else:
+        # Estamos em uma fase normal
+        nome_fase = NOMES_FASES.get(fase_atual, f"Fase {fase_atual}")
+        desenhar_texto(f"{nome_fase} completada!", fonte_config, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL/2, ALTURA_TELA_VIRTUAL/2 - 50)
+        desenhar_texto(f"Repetições: {REPETICOES_ATUAIS.get(fase_atual, 0)}/{REPETICOES_POR_FASE}", fonte_config, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL/2, ALTURA_TELA_VIRTUAL/2)
+        
+        # Verifica se a subfase está disponível
+        if SUBFASE_DISPONIVEL.get(fase_atual, False):
+            desenhar_texto("Subfase desbloqueada!", fonte_config, (255, 255, 0), tela_virtual, LARGURA_TELA_VIRTUAL/2, ALTURA_TELA_VIRTUAL/2 + 30)
+            desenhar_texto("Clique para jogar a subfase", fonte_config, (255, 255, 0), tela_virtual, LARGURA_TELA_VIRTUAL/2, ALTURA_TELA_VIRTUAL/2 + 60)
+        else:
+            desenhar_texto("Clique para continuar", fonte_config, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL/2, ALTURA_TELA_VIRTUAL/2 + 50)
 
 def desenhar_borda_texturizada(superficie, rect, imagem, thickness=16):
     tile_w, tile_h = imagem.get_size()
@@ -700,6 +907,7 @@ while rodando:
             if estado_jogo == TELA_INICIAL:
                 if botao_iniciar.collidepoint(pos_mouse): estado_jogo = SELECAO_FASE
                 if botao_config.collidepoint(pos_mouse): estado_jogo = CONFIGURACOES
+                if botao_sobre.collidepoint(pos_mouse): estado_jogo = SOBRE
             
             # elif estado_jogo == SELECAO_FASE:
             #     for num, rect in botoes_fase.items():
@@ -710,12 +918,8 @@ while rodando:
             elif estado_jogo == SELECAO_FASE:
                 for num, rect in botoes_fase.items():
                     if rect.collidepoint(pos_mouse):
-                        requisito = REQUISITOS_FASES.get(num, 0)
-                        if PONTOS_ACUMULADOS >= requisito:  # fase liberada
-                            carregar_fase(num)
-                            estado_jogo = JOGANDO
-                        else:
-                            print(f"Fase {num} bloqueada! Precisa de {requisito} pontos para liberar.")
+                        carregar_fase(num)
+                        estado_jogo = JOGANDO
                 if botao_voltar.collidepoint(pos_mouse):
                     estado_jogo = TELA_INICIAL
 
@@ -732,111 +936,150 @@ while rodando:
                     if rect.collidepoint(pos_mouse): 
                         tocar_musica_por_nome(nome)
                         salvar_configuracoes()  # Salvar imediatamente
+            
+            elif estado_jogo == SOBRE:
+                # Botão voltar específico da tela sobre
+                botao_voltar_sobre = pygame.Rect(20, 20, 100, 40)
+                if botao_voltar_sobre.collidepoint(pos_mouse): 
+                    estado_jogo = TELA_INICIAL
 
             elif estado_jogo == VITORIA:
-                estado_jogo = SELECAO_FASE
+                # Verifica se estamos em uma subfase ou fase normal
+                if FASE_ORIGEM_SUBFASE is not None:
+                    # Estamos em uma subfase - volta para seleção de fases
+                    FASE_ORIGEM_SUBFASE = None
+                    estado_jogo = SELECAO_FASE
+                else:
+                    # Estamos em uma fase normal - verifica se a subfase está disponível
+                    if SUBFASE_DISPONIVEL.get(fase_atual, False):
+                        # Carrega a subfase
+                        carregar_subfase(fase_atual)
+                        estado_jogo = SUBFASE
+                    else:
+                        # Reinicia as repetições da fase atual e volta para o jogo
+                        REPETICOES_ATUAIS[fase_atual] = 0
+                        carregar_fase(fase_atual)
+                        estado_jogo = JOGANDO
+                        salvar_configuracoes()  # Salva o reset das repetições
             
             elif estado_jogo == JOGANDO:
                 if botao_sair_fase.collidepoint(pos_mouse): 
                     estado_jogo = SELECAO_FASE
-                elif progresso.fase_atual in [1, 2, 3] and progresso.edit_mode:
+            elif estado_jogo == SUBFASE:
+                if botao_sair_fase.collidepoint(pos_mouse): 
+                    estado_jogo = SELECAO_FASE
+                elif botao_musica_fase.collidepoint(pos_mouse):
+                    # Alternar para próxima música
+                    musicas_lista = list(MUSICAS_DISPONIVEIS.keys())
+                    try:
+                        indice_atual = musicas_lista.index(MUSICA_ATUAL_NOME)
+                        proxima_musica = musicas_lista[(indice_atual + 1) % len(musicas_lista)]
+                    except ValueError:
+                        proxima_musica = musicas_lista[0]
+                    
+                    tocar_musica_por_nome(proxima_musica)
+                    salvar_configuracoes()  # Salvar a mudança
+                elif (fase_atual in [1, 2, 3, 4] or estado_jogo == SUBFASE) and edit_mode:
                     # Modo de edição ativo
-                    if progresso.desenhando_caminho:
+                    if desenhando_caminho:
                         # Adicionar pontinho individual na posição clicada
-                        progresso.adicionar_pontinho(int(pos_mouse[0]), int(pos_mouse[1]))
-                    elif progresso.criando_linha_reta:
+                        adicionar_pontinho(int(pos_mouse[0]), int(pos_mouse[1]))
+                    elif criando_linha_reta:
                         # Modo de linha reta
-                        if progresso.ponto_inicio_linha is None:
+                        if ponto_inicio_linha is None:
                             # Primeiro clique: definir ponto de início
-                            progresso.ponto_inicio_linha = (int(pos_mouse[0]), int(pos_mouse[1]))
+                            set_ponto_inicio_linha((int(pos_mouse[0]), int(pos_mouse[1])))
                         else:
                             # Segundo clique: criar linha reta
-                            progresso.criar_linha_reta_pontinhos(
-                                progresso.ponto_inicio_linha[0], progresso.ponto_inicio_linha[1],
+                            criar_linha_reta_pontinhos(
+                                ponto_inicio_linha[0], ponto_inicio_linha[1],
                                 int(pos_mouse[0]), int(pos_mouse[1])
                             )
-                            progresso.ponto_inicio_linha = None
-                    elif progresso.editando_ponto_inicio:
+                            set_ponto_inicio_linha(None)
+                    elif editando_ponto_inicio:
                         # Mover ponto de início
-                        progresso.area_inicio.center = pos_mouse
-                        progresso.atualizar_areas_validas()
-                        progresso.posicao_peixinho = list(progresso.area_inicio.center)
-                    elif progresso.editando_ponto_chegada:
+                        set_area_inicio_center(pos_mouse)
+                        atualizar_areas_validas()
+                        set_posicao_peixinho(area_inicio.center)
+                    elif editando_ponto_chegada:
                         # Mover ponto de chegada
-                        progresso.area_chegada.center = pos_mouse
-                        progresso.atualizar_areas_validas()
+                        set_area_chegada_center(pos_mouse)
+                        atualizar_areas_validas()
 
         if evento.type == pygame.MOUSEBUTTONUP:
-            if progresso.dragging:
-                progresso.dragging = False
-                progresso.drag_rect_idx = None
+            if dragging:
+                set_dragging(False)
+                set_drag_rect_idx(None)
                 recomputar_pontinhos_fase_atual()
 
         if evento.type == pygame.KEYDOWN:
-            if estado_jogo == JOGANDO and progresso.fase_atual in [1, 2, 3]:
+            if (estado_jogo == JOGANDO and fase_atual in [1, 2, 3, 4]) or estado_jogo == SUBFASE:
                 if evento.key == pygame.K_e:
-                    progresso.edit_mode = not progresso.edit_mode
+                    edit_mode = not edit_mode
                     # Resetar modos de edição ao sair
-                    if not progresso.edit_mode:
-                        progresso.resetar_edicao()
-                elif progresso.edit_mode:
+                    if not edit_mode:
+                        resetar_edicao()
+                elif edit_mode:
                     if evento.key == pygame.K_i:
-                        progresso.editando_ponto_inicio = not progresso.editando_ponto_inicio
-                        progresso.editando_ponto_chegada = False
+                        set_editando_ponto_inicio(not editando_ponto_inicio)
+                        set_editando_ponto_chegada(False)
                     elif evento.key == pygame.K_c:
-                        progresso.editando_ponto_chegada = not progresso.editando_ponto_chegada
-                        progresso.editando_ponto_inicio = False
+                        set_editando_ponto_chegada(not editando_ponto_chegada)
+                        set_editando_ponto_inicio(False)
                     elif evento.key == pygame.K_p:
-                        progresso.desenhando_caminho = not progresso.desenhando_caminho
+                        set_desenhando_caminho(not desenhando_caminho)
                         # Desativa modo linha reta quando ativa modo pontinho individual
-                        if progresso.desenhando_caminho:
-                            progresso.criando_linha_reta = False
-                            progresso.ponto_inicio_linha = None
+                        if desenhando_caminho:
+                            set_criando_linha_reta(False)
+                            set_ponto_inicio_linha(None)
                     elif evento.key == pygame.K_l:
-                        progresso.criando_linha_reta = not progresso.criando_linha_reta
+                        set_criando_linha_reta(not criando_linha_reta)
                         # Desativa modo pontinho individual quando ativa modo linha reta
-                        if progresso.criando_linha_reta:
-                            progresso.desenhando_caminho = False
-                        progresso.ponto_inicio_linha = None
+                        if criando_linha_reta:
+                            set_desenhando_caminho(False)
+                        set_ponto_inicio_linha(None)
                     elif evento.key == pygame.K_r:
                         # Limpar todos os pontinhos
-                        progresso.limpar_pontinhos()
+                        limpar_pontinhos()
                     elif evento.key == pygame.K_s:
                         # Salvar mudanças
-                        salvar_fase_editada()
+                        if estado_jogo == SUBFASE:
+                            salvar_subfase()
+                        else:
+                            salvar_fase_editada()
 
     # --- Lógica do Jogo (usa pos_mouse virtual) ---
-    if estado_jogo == JOGANDO:
-        futuro_peixinho_rect = progresso.peixinho_img_atual.get_rect(center=pos_mouse)
+    if estado_jogo == JOGANDO or estado_jogo == SUBFASE:
+        futuro_peixinho_rect = peixinho_img_atual.get_rect(center=pos_mouse)
         
         # Atualiza elementos editados em tempo real
-        if progresso.edit_mode and progresso.fase_atual in [1, 2, 3]:
-            if progresso.editando_ponto_inicio:
-                progresso.area_inicio.center = pos_mouse
-                progresso.atualizar_areas_validas()
-                progresso.posicao_peixinho = list(progresso.area_inicio.center)
-            elif progresso.editando_ponto_chegada:
-                progresso.area_chegada.center = pos_mouse
-                progresso.atualizar_areas_validas()
+        if edit_mode and (fase_atual in [1, 2, 3, 4] or estado_jogo == SUBFASE):
+            if editando_ponto_inicio:
+                set_area_inicio_center(pos_mouse)
+                atualizar_areas_validas()
+                set_posicao_peixinho(area_inicio.center)
+            elif editando_ponto_chegada:
+                set_area_chegada_center(pos_mouse)
+                atualizar_areas_validas()
 
         # Movimento e coleta de pontinhos (desabilitado no modo de edição)
-        if not (progresso.edit_mode and progresso.fase_atual in [1, 2, 3]):
+        if not (edit_mode and (fase_atual in [1, 2, 3, 4] or estado_jogo == SUBFASE)):
             # Só move o personagem se o mouse estiver sendo movido ou se já iniciou o movimento
-            if progresso.personagem_iniciou_movimento or pos_mouse != progresso.posicao_peixinho:
-                progresso.posicao_peixinho = list(pos_mouse)
-                progresso.personagem_iniciou_movimento = True
+            if personagem_iniciou_movimento or pos_mouse != posicao_peixinho:
+                set_posicao_peixinho(pos_mouse)
+                personagem_iniciou_movimento = True
             
             # Verifica colisão com pontinhos (se existirem)
-            if len(progresso.pontinhos) > 0:
-                for i, (x, y) in enumerate(progresso.pontinhos[:]):
+            if len(pontinhos) > 0:
+                for i, (x, y) in enumerate(pontinhos[:]):
                     if ((pos_mouse[0] - x) ** 2 + (pos_mouse[1] - y) ** 2) ** 0.5 < 15:  # raio de coleta
-                        progresso.remover_pontinho(i)
+                        remover_pontinho(i)
                         break
         else:
             # No modo de edição, apenas move o personagem sem coletar
-            progresso.posicao_peixinho = list(pos_mouse)
+            set_posicao_peixinho(pos_mouse)
 
-        peixinho_rect = progresso.peixinho_img_atual.get_rect(center=progresso.posicao_peixinho)
+        peixinho_rect = peixinho_img_atual.get_rect(center=posicao_peixinho)
         # # Só verifica colisão com chegada se não estiver no modo de edição
         # if not (progresso.edit_mode and progresso.fase_atual in [1, 2, 3, 4]):
         #     if progresso.area_chegada.colliderect(peixinho_rect):
@@ -844,21 +1087,47 @@ while rodando:
         #         if progresso.verificar_vitoria():
         #             estado_jogo = VITORIA
                 # Só verifica colisão com chegada se não estiver no modo de edição
-        if not (progresso.edit_mode and progresso.fase_atual in [1, 2, 3]):
-            if progresso.area_chegada.colliderect(peixinho_rect):
+        if not (edit_mode and (fase_atual in [1, 2, 3, 4] or estado_jogo == SUBFASE)):
+            if area_chegada.colliderect(peixinho_rect):
                 # Vence apenas se não restarem pontinhos (quando habilitados)
-                if progresso.verificar_vitoria():
-                    # Atualiza pontuação acumulada
-                    PONTOS_ACUMULADOS, FASES_LIBERADAS
-                    PONTOS_ACUMULADOS += progresso.pontuacao  
-
-                    # Verifica desbloqueio de fases
-                    for fase, requisito in REQUISITOS_FASES.items():
-                        if PONTOS_ACUMULADOS >= requisito:
-                            FASES_LIBERADAS.add(fase)
-
-                    # Vai para tela de vitória
-                    estado_jogo = VITORIA
+                if verificar_vitoria():
+                    if estado_jogo == SUBFASE:
+                        # Vitória na subfase - incrementa repetições da subfase
+                        REPETICOES_SUBFASE[FASE_ORIGEM_SUBFASE] += 1
+                        nome_subfase = NOMES_SUBFASES.get(FASE_ORIGEM_SUBFASE, f"Subfase {FASE_ORIGEM_SUBFASE}")
+                        print(f"{nome_subfase} completada! Repetições: {REPETICOES_SUBFASE[FASE_ORIGEM_SUBFASE]}/{REPETICOES_POR_FASE}")
+                        
+                        # Verifica se completou as 5 repetições da subfase
+                        if REPETICOES_SUBFASE[FASE_ORIGEM_SUBFASE] >= REPETICOES_POR_FASE:
+                            # Subfase completamente finalizada - vai para tela de vitória
+                            estado_jogo = VITORIA
+                        else:
+                            # Ainda precisa de mais repetições - reinicia a subfase
+                            carregar_subfase(FASE_ORIGEM_SUBFASE)
+                        
+                        # Salva progresso
+                        salvar_configuracoes()
+                    else:
+                        # Incrementa contador de repetições da fase atual
+                        REPETICOES_ATUAIS[fase_atual] += 1
+                        
+                        # Atualiza pontuação acumulada
+                        PONTOS_ACUMULADOS += pontuacao  
+                        
+                        # Verifica se completou as 5 repetições necessárias
+                        if REPETICOES_ATUAIS[fase_atual] >= REPETICOES_POR_FASE:
+                            # Desbloqueia a subfase para esta fase
+                            SUBFASE_DISPONIVEL[fase_atual] = True
+                            # Fase completamente finalizada - vai para tela de vitória
+                            estado_jogo = VITORIA
+                        else:
+                            # Ainda precisa de mais repetições - reinicia a fase
+                            carregar_fase(fase_atual)
+                            nome_fase = NOMES_FASES.get(fase_atual, f"Fase {fase_atual}")
+                            print(f"{nome_fase} completado! Repetições: {REPETICOES_ATUAIS[fase_atual]}/{REPETICOES_POR_FASE}")
+                        
+                        # Salva progresso
+                        salvar_configuracoes()
 
 
     # --- Desenho na Tela Virtual ---
@@ -868,8 +1137,12 @@ while rodando:
         desenhar_selecao_fase(pos_mouse)
     elif estado_jogo == JOGANDO:
         desenhar_jogo(pos_mouse)
+    elif estado_jogo == SUBFASE:
+        desenhar_jogo(pos_mouse)
     elif estado_jogo == CONFIGURACOES:
         desenhar_configuracoes(pos_mouse)
+    elif estado_jogo == SOBRE:
+        desenhar_tela_sobre(pos_mouse)
     elif estado_jogo == VITORIA:
         desenhar_tela_vitoria()
 
