@@ -313,7 +313,7 @@ for nome, cor in cores_disponiveis.items():
     botoes_cor[nome] = pygame.Rect(COLUNA_ESQ_X, y_pos_cor, LARG_BOTAO, ALT_BOTAO)
     y_pos_cor += ESPACO_V
 
-# Botões de Música (coluna direita)
+# Botões de Ruído de fundo (coluna direita)
 y_pos_mus = Y_INICIO_COLUNA
 for nome in MUSICAS_DISPONIVEIS.keys():
     botoes_musica[nome] = pygame.Rect(COLUNA_DIR_X, y_pos_mus, LARG_BOTAO, ALT_BOTAO)
@@ -641,7 +641,7 @@ def desenhar_configuracoes(mouse_pos):
     
     # Títulos das colunas (movidos para baixo)
     desenhar_texto("Cor dos pontinhos", fonte_config, BRANCO, tela_virtual, COLUNA_ESQ_X + LARG_BOTAO/2, 220)
-    desenhar_texto("Música", fonte_config, BRANCO, tela_virtual, COLUNA_DIR_X + LARG_BOTAO/2, 220)
+    desenhar_texto("Ruído de fundo", fonte_config, BRANCO, tela_virtual, COLUNA_DIR_X + LARG_BOTAO/2, 220)
 
     # Coluna esquerda: cores
     for nome, rect in botoes_cor.items():
@@ -805,13 +805,13 @@ def desenhar_jogo(mouse_pos=(0, 0)):
     try:
         cor_musica_fase = COR_BOTAO_HOVER if botao_musica_fase.collidepoint(mouse_pos) else COR_BOTAO
         pygame.draw.rect(tela_virtual, cor_musica_fase, botao_musica_fase, border_radius=10)
-        # Mostra o nome da música atual ou "Música"
-        texto_musica = MUSICA_ATUAL_NOME if len(MUSICA_ATUAL_NOME) <= 8 else "Música"
+        # Mostra o nome da música atual ou "Ruído de fundo"
+        texto_musica = MUSICA_ATUAL_NOME if len(MUSICA_ATUAL_NOME) <= 8 else "Ruído de fundo"
         desenhar_texto(texto_musica, fonte_config, BRANCO, tela_virtual, botao_musica_fase.centerx, botao_musica_fase.centery)
     except:
         # Fallback se mouse_pos não estiver definido
         pygame.draw.rect(tela_virtual, COR_BOTAO, botao_musica_fase, border_radius=10)
-        desenhar_texto("Música", fonte_config, BRANCO, tela_virtual, botao_musica_fase.centerx, botao_musica_fase.centery)
+        desenhar_texto("Ruído de fundo", fonte_config, BRANCO, tela_virtual, botao_musica_fase.centerx, botao_musica_fase.centery)
 
     peixinho_rect = peixinho_img_atual.get_rect(center=posicao_peixinho)
     tela_virtual.blit(peixinho_img_atual, peixinho_rect)
