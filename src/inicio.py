@@ -56,8 +56,8 @@ COR_BOTAO_HOVER = (150, 150, 255)
 COR_PONTINHOS = (255, 255, 0)  # Amarelo padrão para pontinhos
 MUSICAS_DISPONIVEIS = {
     "Mudo": None,
-    "Ruído Branco": os.path.join(AUDIO_DIR, "musica1.ogg"),
-    "Ruído Rosa": os.path.join(AUDIO_DIR, "musica2.ogg")
+    "Ruído 1": os.path.join(AUDIO_DIR, "musica1.ogg"),
+    "Ruído 2": os.path.join(AUDIO_DIR, "musica2.ogg")
 }
 MUSICA_ATUAL_NOME = "Mudo"
 
