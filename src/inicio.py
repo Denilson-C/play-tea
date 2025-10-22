@@ -712,7 +712,7 @@ def desenhar_jogo(mouse_pos=(0, 0)):
     # Desenha pontuação no canto superior direito (se houver pontinhos)
     if True:
         fonte_pontuacao = pygame.font.Font(None, 36)
-        texto_pontuacao = fonte_pontuacao.render(f"Pontos: {pontuacao}", True, BRANCO)
+        texto_pontuacao = fonte_pontuacao.render(f"Pontos: {PONTOS_ACUMULADOS + pontuacao}", True, BRANCO)
         tela_virtual.blit(texto_pontuacao, (LARGURA_TELA_VIRTUAL - 150, 20))
         
         # Progresso de repetições mantido internamente (não exibido na tela)
