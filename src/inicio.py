@@ -332,7 +332,7 @@ def carregar_som_vitoria():
     global som_vitoria
     try:
         # Usa o primeiro arquivo de música como som de vitória
-        arquivo_som = os.path.join(AUDIO_DIR, "musica1.ogg")
+        arquivo_som = os.path.join(AUDIO_DIR, "vitoria.ogg")
         if os.path.exists(arquivo_som):
             som_vitoria = pygame.mixer.Sound(arquivo_som)
             print("Som de vitória carregado com sucesso!")
