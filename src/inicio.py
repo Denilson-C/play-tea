@@ -365,7 +365,7 @@ def carregar_fase(numero_fase):
             print(f"Aviso: não foi possível carregar a imagem de chegada da fase {numero_fase}: {e}")
     
     # Inicializa pontinhos por fase (se habilitado)
-    resetar_pontuacao()
+    # Não reseta pontuação - deve ser cumulativa
     limpar_pontinhos()
     
     # Tenta carregar fase editada primeiro (após definir fase_atual)
@@ -412,6 +412,7 @@ def salvar_configuracoes():
         "repeticoes_atuais": REPETICOES_ATUAIS,
         "fase_atual_numero": FASE_ATUAL_NUMERO,
         "repeticoes_fase": REPETICOES_FASE,
+        "pontos_acumulados": PONTOS_ACUMULADOS,
         "nome_crianca": NOME_CRIANCA,
         "nome_responsavel": NOME_RESPONSAVEL
     }
@@ -430,12 +431,13 @@ def carregar_configuracoes():
         if os.path.exists(config_path):
             with open(config_path, "r") as f:
                 dados = json.load(f)
-            global COR_PONTINHOS, MUSICA_ATUAL_NOME, REPETICOES_ATUAIS, FASE_ATUAL_NUMERO, REPETICOES_FASE, NOME_CRIANCA, NOME_RESPONSAVEL
+            global COR_PONTINHOS, MUSICA_ATUAL_NOME, REPETICOES_ATUAIS, FASE_ATUAL_NUMERO, REPETICOES_FASE, PONTOS_ACUMULADOS, NOME_CRIANCA, NOME_RESPONSAVEL
             COR_PONTINHOS = tuple(dados.get("cor_pontinhos", COR_PONTINHOS))
             MUSICA_ATUAL_NOME = dados.get("musica_atual", MUSICA_ATUAL_NOME)
             REPETICOES_ATUAIS = dados.get("repeticoes_atuais", {})
             FASE_ATUAL_NUMERO = dados.get("fase_atual_numero", FASE_ATUAL_NUMERO)
             REPETICOES_FASE = dados.get("repeticoes_fase", REPETICOES_FASE)
+            PONTOS_ACUMULADOS = dados.get("pontos_acumulados", PONTOS_ACUMULADOS)
             NOME_CRIANCA = dados.get("nome_crianca", NOME_CRIANCA)
             NOME_RESPONSAVEL = dados.get("nome_responsavel", NOME_RESPONSAVEL)
             print("Configurações carregadas com sucesso!")
@@ -1062,6 +1064,8 @@ while rodando:
                         estado_jogo = VITORIA
                     else:
                         # Ainda precisa de mais repetições - reinicia a fase
+                        # Reseta apenas a pontuação local, mantém a acumulada
+                        resetar_pontuacao()
                         carregar_fase(fase_atual)
                     
                     # Salva progresso
