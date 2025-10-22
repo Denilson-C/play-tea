@@ -166,6 +166,12 @@ criando_linha_reta = False
 ponto_inicio_linha = None
 personagem_iniciou_movimento = False
 
+# Efeito de vitória
+efeito_vitoria_ativo = False
+tempo_efeito_vitoria = 0
+DURACAO_EFEITO_VITORIA = 2000  # 2 segundos em milissegundos
+som_vitoria = None
+
 # --- Funções de Gerenciamento ---
 def resetar_edicao():
     """Reseta todas as variáveis de modo de edição"""
@@ -206,7 +212,7 @@ def remover_pontinho(index):
     global pontinhos, pontuacao
     if 0 <= index < len(pontinhos):
         pontinhos.pop(index)
-        pontuacao += 10
+        pontuacao += 1
 
 def limpar_pontinhos():
     """Remove todos os pontinhos"""
@@ -320,6 +326,38 @@ def tocar_musica_por_nome(nome):
             print("Mixer reinicializado")
         except:
             print("Erro ao reinicializar mixer")
+
+def carregar_som_vitoria():
+    """Carrega o som de vitória"""
+    global som_vitoria
+    try:
+        # Usa o primeiro arquivo de música como som de vitória
+        arquivo_som = os.path.join(AUDIO_DIR, "musica1.ogg")
+        if os.path.exists(arquivo_som):
+            som_vitoria = pygame.mixer.Sound(arquivo_som)
+            print("Som de vitória carregado com sucesso!")
+        else:
+            print("Aviso: arquivo de som de vitória não encontrado")
+    except pygame.error as e:
+        print(f"Erro ao carregar som de vitória: {e}")
+
+def tocar_som_vitoria():
+    """Toca o som de vitória"""
+    global som_vitoria
+    try:
+        if som_vitoria is not None:
+            som_vitoria.play()
+            print("Som de vitória tocado!")
+    except pygame.error as e:
+        print(f"Erro ao tocar som de vitória: {e}")
+
+def iniciar_efeito_vitoria():
+    """Inicia o efeito de vitória"""
+    global efeito_vitoria_ativo, tempo_efeito_vitoria
+    efeito_vitoria_ativo = True
+    tempo_efeito_vitoria = pygame.time.get_ticks()
+    tocar_som_vitoria()
+    print("Efeito de vitória iniciado!")
 
 # --- Funções ---
 def carregar_fase(numero_fase):
@@ -514,6 +552,35 @@ def desenhar_fundo_com_overlay():
     overlay = pygame.Surface((LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 100))
     tela_virtual.blit(overlay, (0, 0))
+
+def desenhar_efeito_vitoria():
+    """Desenha o efeito de vitória com brilho amarelo"""
+    if not efeito_vitoria_ativo:
+        return
+    
+    tempo_atual = pygame.time.get_ticks()
+    tempo_decorrido = tempo_atual - tempo_efeito_vitoria
+    
+    if tempo_decorrido >= DURACAO_EFEITO_VITORIA:
+        # Efeito terminou
+        global efeito_vitoria_ativo
+        efeito_vitoria_ativo = False
+        return
+    
+    # Calcula a intensidade do efeito (fade in e fade out)
+    progresso = tempo_decorrido / DURACAO_EFEITO_VITORIA
+    
+    if progresso <= 0.5:
+        # Fade in (primeira metade)
+        intensidade = int(255 * (progresso * 2))
+    else:
+        # Fade out (segunda metade)
+        intensidade = int(255 * (2 - progresso * 2))
+    
+    # Cria overlay amarelo transparente
+    overlay_amarelo = pygame.Surface((LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL), pygame.SRCALPHA)
+    overlay_amarelo.fill((255, 255, 0, intensidade // 3))  # Amarelo com transparência
+    tela_virtual.blit(overlay_amarelo, (0, 0))
 
 # --- Funções de Desenho das Telas (AGORA DESENHAM NA TELA_VIRTUAL) ---
 def desenhar_tela_inicial(mouse_pos):
@@ -752,6 +819,9 @@ def desenhar_jogo(mouse_pos=(0, 0)):
     if len(pontinhos) > 0:
         for x, y in pontinhos:
             pygame.draw.circle(tela_virtual, COR_PONTINHOS, (x, y), 8)
+    
+    # Desenha efeito de vitória por cima de tudo
+    desenhar_efeito_vitoria()
 
 def desenhar_tela_vitoria():
     tela_virtual.blit(fundo_img_atual, (0, 0))
@@ -808,6 +878,8 @@ rodando = True
 
 # Carregar configurações salvas
 carregar_configuracoes()
+# Carregar som de vitória
+carregar_som_vitoria()
 # Tocar música automaticamente se não estiver em modo mudo
 if MUSICA_ATUAL_NOME != "Mudo":
     tocar_musica_por_nome(MUSICA_ATUAL_NOME)
@@ -1050,6 +1122,9 @@ while rodando:
             if area_chegada.colliderect(peixinho_rect):
                 # Vence apenas se não restarem pontinhos (quando habilitados)
                 if verificar_vitoria():
+                    # Inicia efeito de vitória
+                    iniciar_efeito_vitoria()
+                    
                     # Incrementa contador de repetições da fase atual
                     REPETICOES_FASE[FASE_ATUAL_NUMERO] += 1
                     nome_fase = NOMES_FASES.get(FASE_ATUAL_NUMERO, f"Fase {FASE_ATUAL_NUMERO}")
@@ -1063,10 +1138,13 @@ while rodando:
                         # Fase completamente finalizada - vai para tela de vitória
                         estado_jogo = VITORIA
                     else:
-                        # Ainda precisa de mais repetições - reinicia a fase
+                        # Ainda precisa de mais repetições - reinicia a fase após o efeito
                         # Reseta apenas a pontuação local, mantém a acumulada
                         resetar_pontuacao()
-                        carregar_fase(fase_atual)
+                        # Respawn automático do personagem na linha de partida
+                        set_posicao_peixinho(area_inicio.center)
+                        # Recarrega os pontinhos da fase
+                        recomputar_pontinhos_fase_atual()
                     
                     # Salva progresso
                     salvar_configuracoes()
