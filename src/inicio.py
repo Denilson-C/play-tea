@@ -238,33 +238,6 @@ def verificar_vitoria():
     return len(pontinhos) == 0
 
 # --- Funções auxiliares para modificar variáveis globais ---
-def set_ponto_inicio_linha(valor):
-    global ponto_inicio_linha
-    ponto_inicio_linha = valor
-
-def set_criando_linha_reta(valor):
-    global criando_linha_reta
-    criando_linha_reta = valor
-
-def set_desenhando_caminho(valor):
-    global desenhando_caminho
-    desenhando_caminho = valor
-
-def set_editando_ponto_inicio(valor):
-    global editando_ponto_inicio
-    editando_ponto_inicio = valor
-
-def set_editando_ponto_chegada(valor):
-    global editando_ponto_chegada
-    editando_ponto_chegada = valor
-
-def set_dragging(valor):
-    global dragging
-    dragging = valor
-
-def set_drag_rect_idx(valor):
-    global drag_rect_idx
-    drag_rect_idx = valor
 
 def set_area_inicio_center(pos):
     global area_inicio
@@ -527,81 +500,43 @@ def desenhar_texto(texto, fonte, cor, superficie, x, y):
     textrect = textobj.get_rect(center=(x, y))
     superficie.blit(textobj, textrect)
 
-# --- Funções de Desenho das Telas (AGORA DESENHAM NA TELA_VIRTUAL) ---
-def desenhar_tela_inicial(mouse_pos):
-    # Desenhar fundo desfocado
+def desenhar_botao(rect, texto, fonte, cor_normal, cor_hover, mouse_pos, superficie):
+    """Função genérica para desenhar botões"""
+    cor = cor_hover if rect.collidepoint(mouse_pos) else cor_normal
+    pygame.draw.rect(superficie, cor, rect, border_radius=15)
+    desenhar_texto(texto, fonte, BRANCO, superficie, rect.centerx, rect.centery)
+
+def desenhar_fundo_com_overlay():
+    """Função genérica para desenhar fundo com overlay escuro"""
     tela_virtual.blit(fundo_menu_img, (0, 0))
-    # Adicionar overlay escuro para melhorar legibilidade
     overlay = pygame.Surface((LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 100))
     tela_virtual.blit(overlay, (0, 0))
+
+# --- Funções de Desenho das Telas (AGORA DESENHAM NA TELA_VIRTUAL) ---
+def desenhar_tela_inicial(mouse_pos):
+    desenhar_fundo_com_overlay()
     
     desenhar_texto("PLAY TEA", fonte_titulo, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 120)
     
-    cor_iniciar = COR_BOTAO_HOVER if botao_iniciar.collidepoint(mouse_pos) else COR_BOTAO
-    pygame.draw.rect(tela_virtual, cor_iniciar, botao_iniciar, border_radius=15)
-    desenhar_texto("Jogar", fonte_botao, BRANCO, tela_virtual, botao_iniciar.centerx, botao_iniciar.centery)
-    
-    cor_config = COR_BOTAO_HOVER if botao_config.collidepoint(mouse_pos) else COR_BOTAO
-    pygame.draw.rect(tela_virtual, cor_config, botao_config, border_radius=15)
-    desenhar_texto("Configurações", fonte_botao, BRANCO, tela_virtual, botao_config.centerx, botao_config.centery)
-    
-    cor_sobre = COR_BOTAO_HOVER if botao_sobre.collidepoint(mouse_pos) else COR_BOTAO
-    pygame.draw.rect(tela_virtual, cor_sobre, botao_sobre, border_radius=15)
-    desenhar_texto("Sobre", fonte_botao, BRANCO, tela_virtual, botao_sobre.centerx, botao_sobre.centery)
+    desenhar_botao(botao_iniciar, "Jogar", fonte_botao, COR_BOTAO, COR_BOTAO_HOVER, mouse_pos, tela_virtual)
+    desenhar_botao(botao_config, "Configurações", fonte_botao, COR_BOTAO, COR_BOTAO_HOVER, mouse_pos, tela_virtual)
+    desenhar_botao(botao_sobre, "Sobre", fonte_botao, COR_BOTAO, COR_BOTAO_HOVER, mouse_pos, tela_virtual)
 
-# def desenhar_selecao_fase(mouse_pos):
-#     # Desenhar fundo desfocado
-#     tela_virtual.blit(fundo_menu_img, (0, 0))
-#     # Adicionar overlay escuro para melhorar legibilidade
-#     overlay = pygame.Surface((LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL), pygame.SRCALPHA)
-#     overlay.fill((0, 0, 0, 100))
-#     tela_virtual.blit(overlay, (0, 0))
-    
-#     desenhar_texto("Selecione a Fase", fonte_titulo, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 80)
-
-#     for num, rect in botoes_fase.items():
-#         cor = COR_BOTAO_HOVER if rect.collidepoint(mouse_pos) else COR_BOTAO
-#         pygame.draw.rect(tela_virtual, cor, rect, border_radius=15)
-#         desenhar_texto(f"Fase {num}", fonte_botao, BRANCO, tela_virtual, rect.centerx, rect.centery)
-
-#     cor_voltar = COR_BOTAO_HOVER if botao_voltar.collidepoint(mouse_pos) else COR_BOTAO
-#     pygame.draw.rect(tela_virtual, cor_voltar, botao_voltar, border_radius=15)
-#     desenhar_texto("Voltar", fonte_botao, BRANCO, tela_virtual, botao_voltar.centerx, botao_voltar.centery)
-    
 def desenhar_selecao_fase(mouse_pos):
-    # Desenhar fundo desfocado
-    tela_virtual.blit(fundo_menu_img, (0, 0))
-    # Adicionar overlay escuro para melhorar legibilidade
-    overlay = pygame.Surface((LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 100))
-    tela_virtual.blit(overlay, (0, 0))
+    desenhar_fundo_com_overlay()
     
     desenhar_texto("Selecione o Personagem", fonte_titulo, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 80)
 
     for num, rect in botoes_fase.items():
-        cor = COR_BOTAO_HOVER if rect.collidepoint(mouse_pos) else COR_BOTAO
-        pygame.draw.rect(tela_virtual, cor, rect, border_radius=15)
-        # Mostra o nome do personagem baseado no número
-        if num == 1:
-            nome_personagem = "Cachorrinho"
-        else:
-            nome_personagem = "Gatinho"
-        desenhar_texto(nome_personagem, fonte_botao, BRANCO, tela_virtual, rect.centerx, rect.centery)
+        nome_personagem = "Cachorrinho" if num == 1 else "Gatinho"
+        desenhar_botao(rect, nome_personagem, fonte_botao, COR_BOTAO, COR_BOTAO_HOVER, mouse_pos, tela_virtual)
 
-    # Botão voltar
-    cor_voltar = COR_BOTAO_HOVER if botao_voltar.collidepoint(mouse_pos) else COR_BOTAO
-    pygame.draw.rect(tela_virtual, cor_voltar, botao_voltar, border_radius=15)
-    desenhar_texto("Voltar", fonte_botao, BRANCO, tela_virtual, botao_voltar.centerx, botao_voltar.centery)
+    desenhar_botao(botao_voltar, "Voltar", fonte_botao, COR_BOTAO, COR_BOTAO_HOVER, mouse_pos, tela_virtual)
 
 
 def desenhar_configuracoes(mouse_pos):
-    # Desenhar fundo desfocado
-    tela_virtual.blit(fundo_menu_img, (0, 0))
-    # Adicionar overlay escuro para melhorar legibilidade
-    overlay = pygame.Surface((LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 100))
-    tela_virtual.blit(overlay, (0, 0))
+    desenhar_fundo_com_overlay()
     
     desenhar_texto("Configurações", fonte_titulo, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 50)
     
@@ -663,12 +598,7 @@ def desenhar_configuracoes(mouse_pos):
     desenhar_texto("Voltar", fonte_botao, BRANCO, tela_virtual, botao_voltar.centerx, botao_voltar.centery)
 
 def desenhar_tela_sobre(mouse_pos):
-    # Desenhar fundo desfocado
-    tela_virtual.blit(fundo_menu_img, (0, 0))
-    # Adicionar overlay escuro para melhorar legibilidade
-    overlay = pygame.Surface((LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 100))
-    tela_virtual.blit(overlay, (0, 0))
+    desenhar_fundo_com_overlay()
     
     # Carregar e exibir logo da Fatec Barueri no canto superior direito
     try:
@@ -984,14 +914,14 @@ while rodando:
                         # Modo de linha reta
                         if ponto_inicio_linha is None:
                             # Primeiro clique: definir ponto de início
-                            set_ponto_inicio_linha((int(pos_mouse[0]), int(pos_mouse[1])))
+                            ponto_inicio_linha = (int(pos_mouse[0]), int(pos_mouse[1]))
                         else:
                             # Segundo clique: criar linha reta
                             criar_linha_reta_pontinhos(
                                 ponto_inicio_linha[0], ponto_inicio_linha[1],
                                 int(pos_mouse[0]), int(pos_mouse[1])
                             )
-                            set_ponto_inicio_linha(None)
+                            ponto_inicio_linha = None
                     elif editando_ponto_inicio:
                         # Mover ponto de início
                         set_area_inicio_center(pos_mouse)
@@ -1004,8 +934,8 @@ while rodando:
 
         if evento.type == pygame.MOUSEBUTTONUP:
             if dragging:
-                set_dragging(False)
-                set_drag_rect_idx(None)
+                dragging = False
+                drag_rect_idx = None
                 recomputar_pontinhos_fase_atual()
 
         if evento.type == pygame.KEYDOWN:
@@ -1054,23 +984,23 @@ while rodando:
                         resetar_edicao()
                 elif edit_mode:
                     if evento.key == pygame.K_i:
-                        set_editando_ponto_inicio(not editando_ponto_inicio)
-                        set_editando_ponto_chegada(False)
+                        editando_ponto_inicio = not editando_ponto_inicio
+                        editando_ponto_chegada = False
                     elif evento.key == pygame.K_c:
-                        set_editando_ponto_chegada(not editando_ponto_chegada)
-                        set_editando_ponto_inicio(False)
+                        editando_ponto_chegada = not editando_ponto_chegada
+                        editando_ponto_inicio = False
                     elif evento.key == pygame.K_p:
-                        set_desenhando_caminho(not desenhando_caminho)
+                        desenhando_caminho = not desenhando_caminho
                         # Desativa modo linha reta quando ativa modo pontinho individual
                         if desenhando_caminho:
-                            set_criando_linha_reta(False)
-                            set_ponto_inicio_linha(None)
+                            criando_linha_reta = False
+                            ponto_inicio_linha = None
                     elif evento.key == pygame.K_l:
-                        set_criando_linha_reta(not criando_linha_reta)
+                        criando_linha_reta = not criando_linha_reta
                         # Desativa modo pontinho individual quando ativa modo linha reta
                         if criando_linha_reta:
-                            set_desenhando_caminho(False)
-                        set_ponto_inicio_linha(None)
+                            desenhando_caminho = False
+                        ponto_inicio_linha = None
                     elif evento.key == pygame.K_r:
                         # Limpar todos os pontinhos
                         limpar_pontinhos()
@@ -1113,12 +1043,6 @@ while rodando:
             set_posicao_peixinho(pos_mouse)
 
         peixinho_rect = peixinho_img_atual.get_rect(center=posicao_peixinho)
-        # # Só verifica colisão com chegada se não estiver no modo de edição
-        # if not (progresso.edit_mode and progresso.fase_atual in [1]):
-        #     if progresso.area_chegada.colliderect(peixinho_rect):
-        #         # Vence apenas se não restarem pontinhos (quando habilitados)
-        #         if progresso.verificar_vitoria():
-        #             estado_jogo = VITORIA
                 # Só verifica colisão com chegada se não estiver no modo de edição
         if not (edit_mode and fase_atual in [1, 2, 3]):
             if area_chegada.colliderect(peixinho_rect):
