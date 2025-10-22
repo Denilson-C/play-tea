@@ -555,6 +555,8 @@ def desenhar_fundo_com_overlay():
 
 def desenhar_efeito_vitoria():
     """Desenha o efeito de vitória com brilho amarelo"""
+    global efeito_vitoria_ativo
+    
     if not efeito_vitoria_ativo:
         return
     
@@ -563,7 +565,6 @@ def desenhar_efeito_vitoria():
     
     if tempo_decorrido >= DURACAO_EFEITO_VITORIA:
         # Efeito terminou
-        global efeito_vitoria_ativo
         efeito_vitoria_ativo = False
         return
     
