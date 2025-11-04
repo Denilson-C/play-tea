@@ -36,6 +36,57 @@ tela_virtual = pygame.Surface((LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL))
 
 pygame.display.set_caption("PLAY TEA")
 
+# --- Fontes (OpenDyslexic) ---
+FONTS_DIR = os.path.join(ASSETS_DIR, "fonts")
+
+def carregar_fonte(tamanho, negrito=False, italico=False):
+    """Tenta carregar a fonte OpenDyslexic. Fallback para fonte padrão.
+
+    A ordem é:
+    1) Arquivo local em assets/fonts (vários nomes/formatos comuns)
+    2) Fonte instalada no sistema (match_font com nomes conhecidos)
+    3) Fonte padrão do pygame
+    """
+    # 1) Tenta arquivos locais comuns
+    possiveis_arquivos = [
+        "OpenDyslexic-Regular.otf",
+        "OpenDyslexic-Regular.ttf",
+        "OpenDyslexic3-Regular.otf",
+        "OpenDyslexic3-Regular.ttf",
+        "OpenDyslexic.otf",
+        "OpenDyslexic.ttf",
+    ]
+    for nome_arquivo in possiveis_arquivos:
+        caminho = os.path.join(FONTS_DIR, nome_arquivo)
+        if os.path.exists(caminho):
+            try:
+                fonte = pygame.font.Font(caminho, tamanho)
+                fonte.set_bold(negrito)
+                fonte.set_italic(italico)
+                return fonte
+            except Exception:
+                pass
+
+    # 2) Tenta via fonte instalada no sistema
+    nomes_sistema = [
+        "OpenDyslexic", "OpenDyslexic3", "opendyslexic", "opendyslexic3",
+        "Open Dyslexic", "Open Dyslexic 3"
+    ]
+    for nome in nomes_sistema:
+        try:
+            caminho_match = pygame.font.match_font(nome, bold=negrito, italic=italico)
+            if caminho_match:
+                return pygame.font.Font(caminho_match, tamanho)
+        except Exception:
+            pass
+
+    # 3) Fallback padrão
+    try:
+        fonte = pygame.font.SysFont(None, tamanho, bold=negrito, italic=italico)
+        return fonte
+    except Exception:
+        return pygame.font.Font(None, tamanho)
+
 # --- Estados do Jogo ---
 TELA_INICIAL = "tela_inicial"
 SELECAO_FASE = "selecao_fase"
@@ -54,6 +105,7 @@ COR_BOTAO_HOVER = (150, 150, 255)
 
 # --- Variáveis de Configuração ---
 COR_PONTINHOS = (255, 255, 0)  # Amarelo padrão para pontinhos
+INICIO_ESCALA_RELATIVA = 1.3  # Escala do portão em relação ao tamanho da casa
 MUSICAS_DISPONIVEIS = {
     "Mudo": None,
     "Ruído 1": os.path.join(AUDIO_DIR, "musica1.ogg"),
@@ -70,6 +122,7 @@ editando_nome_crianca = False
 editando_nome_responsavel = False
 texto_temporario_crianca = ""
 texto_temporario_responsavel = ""
+teclado_ativo = False
 
 #Requisitos para desbloquear fases
 
@@ -97,9 +150,9 @@ NOMES_FASES = {
 
 
 # --- Fontes ---
-fonte_titulo = pygame.font.Font(None, 90)
-fonte_botao = pygame.font.Font(None, 50)
-fonte_config = pygame.font.Font(None, 40)
+fonte_titulo = carregar_fonte(48)
+fonte_botao = carregar_fonte(24)
+fonte_config = carregar_fonte(22)
 
 # --- Carregar imagem de fundo para menu ---
 fundo_menu_img = pygame.image.load(os.path.join(IMAGES_DIR, "fundo.png"))
@@ -136,6 +189,7 @@ peixinho_img_atual = None
 fundo_img_atual = None
 borda_img_atual = None
 chegada_img_atual = None
+inicio_img_original = None
 
 # Áreas e posições
 areas_validas_atual = []
@@ -283,8 +337,7 @@ Y_INICIO_COLUNA = 260
 # Campos de texto para nomes
 campo_nome_crianca = pygame.Rect(LARGURA_TELA_VIRTUAL / 2 - 150, 120, 300, 35)
 campo_nome_responsavel = pygame.Rect(LARGURA_TELA_VIRTUAL / 2 - 150, 160, 300, 35)
-botao_editar_crianca = pygame.Rect(LARGURA_TELA_VIRTUAL / 2 + 160, 120, 60, 35)
-botao_editar_responsavel = pygame.Rect(LARGURA_TELA_VIRTUAL / 2 + 160, 160, 60, 35)
+botao_salvar_nomes = pygame.Rect(LARGURA_TELA_VIRTUAL / 2 + 170, 140, 140, 40)
 
 # Botões de Cor (coluna esquerda)
 y_pos_cor = Y_INICIO_COLUNA
@@ -326,6 +379,25 @@ def tocar_musica_por_nome(nome):
             print("Mixer reinicializado")
         except:
             print("Erro ao reinicializar mixer")
+
+def iniciar_teclado_texto(rect_alvo=None):
+    global teclado_ativo
+    try:
+        pygame.key.start_text_input()
+        if rect_alvo is not None:
+            # Define a área onde o cursor/IME deve focar
+            pygame.key.set_text_input_rect(rect_alvo)
+        teclado_ativo = True
+    except Exception:
+        teclado_ativo = False
+
+def encerrar_teclado_texto():
+    global teclado_ativo
+    try:
+        pygame.key.stop_text_input()
+        teclado_ativo = False
+    except Exception:
+        teclado_ativo = False
 
 def carregar_som_vitoria():
     """Carrega o som de vitória"""
@@ -377,6 +449,16 @@ def carregar_fase(numero_fase):
         fundo_img_atual = pygame.image.load(fase_info["fundo_img"]).convert()
         # <--- ALTERAÇÃO: Escala para o tamanho da TELA VIRTUAL ---
         fundo_img_atual = pygame.transform.scale(fundo_img_atual, (LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL))
+        
+        # Carrega imagem da área de início (portão)
+        global inicio_img_original
+        inicio_img_original = None
+        try:
+            caminho_inicio = os.path.join(IMAGES_DIR, "portao.png")
+            if os.path.exists(caminho_inicio):
+                inicio_img_original = pygame.image.load(caminho_inicio).convert_alpha()
+        except pygame.error as e:
+            print(f"Aviso: não foi possível carregar imagem de início: {e}")
         
     except pygame.error as e:
         print(f"Erro ao carregar recursos da fase {numero_fase}: {e}")
@@ -611,7 +693,7 @@ def desenhar_configuracoes(mouse_pos):
     desenhar_texto("Configurações", fonte_titulo, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 50)
     
     # Campos de nome
-    fonte_label = pygame.font.Font(None, 32)
+    fonte_label = carregar_fonte(20)
     desenhar_texto("Criança:", fonte_label, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2.2 - 180, 140)
     desenhar_texto("Responsável:", fonte_label, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2.35 - 180, 180)
     
@@ -626,23 +708,18 @@ def desenhar_configuracoes(mouse_pos):
     pygame.draw.rect(tela_virtual, PRETO, campo_nome_responsavel, 2, border_radius=5)
     
     # Texto dos campos
-    fonte_campo = pygame.font.Font(None, 28)
+    fonte_campo = carregar_fonte(18)
     texto_crianca = texto_temporario_crianca if editando_nome_crianca else NOME_CRIANCA
     texto_responsavel = texto_temporario_responsavel if editando_nome_responsavel else NOME_RESPONSAVEL
     
     desenhar_texto(texto_crianca, fonte_campo, PRETO, tela_virtual, campo_nome_crianca.centerx, campo_nome_crianca.centery)
     desenhar_texto(texto_responsavel, fonte_campo, PRETO, tela_virtual, campo_nome_responsavel.centerx, campo_nome_responsavel.centery)
     
-    # Botões de editar
-    cor_btn_edit_crianca = COR_BOTAO_HOVER if botao_editar_crianca.collidepoint(mouse_pos) else COR_BOTAO
-    cor_btn_edit_responsavel = COR_BOTAO_HOVER if botao_editar_responsavel.collidepoint(mouse_pos) else COR_BOTAO
-    
-    pygame.draw.rect(tela_virtual, cor_btn_edit_crianca, botao_editar_crianca, border_radius=5)
-    pygame.draw.rect(tela_virtual, cor_btn_edit_responsavel, botao_editar_responsavel, border_radius=5)
-    
-    fonte_btn = pygame.font.Font(None, 24)
-    desenhar_texto("Editar", fonte_btn, BRANCO, tela_virtual, botao_editar_crianca.centerx, botao_editar_crianca.centery)
-    desenhar_texto("Editar", fonte_btn, BRANCO, tela_virtual, botao_editar_responsavel.centerx, botao_editar_responsavel.centery)
+    # Botão único de salvar
+    cor_btn_salvar = COR_BOTAO_HOVER if botao_salvar_nomes.collidepoint(mouse_pos) else COR_BOTAO
+    pygame.draw.rect(tela_virtual, cor_btn_salvar, botao_salvar_nomes, border_radius=8)
+    fonte_btn = carregar_fonte(18)
+    desenhar_texto("Salvar", fonte_btn, BRANCO, tela_virtual, botao_salvar_nomes.centerx, botao_salvar_nomes.centery)
     
     # Títulos das colunas (movidos para baixo)
     desenhar_texto("Cor dos pontinhos", fonte_config, BRANCO, tela_virtual, COLUNA_ESQ_X + LARG_BOTAO/2, 220)
@@ -670,35 +747,38 @@ def desenhar_configuracoes(mouse_pos):
 def desenhar_tela_sobre(mouse_pos):
     desenhar_fundo_com_overlay()
     
-    # Carregar e exibir logo da Fatec Barueri no canto superior direito
+    # Carregar logo (vai ser exibida ao final, centralizada na parte inferior)
     try:
         logo_fatec = pygame.image.load(os.path.join(IMAGES_DIR, "logo.png")).convert_alpha()
-        # Redimensionar o logo para um tamanho apropriado
         logo_fatec = pygame.transform.smoothscale(logo_fatec, (120, 60))
-        # Posicionar no canto superior direito
-        logo_rect = logo_fatec.get_rect()
-        logo_rect.topright = (LARGURA_TELA_VIRTUAL - 20, 20)
-        tela_virtual.blit(logo_fatec, logo_rect)
     except pygame.error as e:
+        logo_fatec = None
         print(f"Aviso: não foi possível carregar o logo da Fatec: {e}")
     
+    # Painel de fundo semitransparente para os textos (cinza)
+    painel_x = 60
+    painel_y = 60
+    painel_larg = LARGURA_TELA_VIRTUAL - 2 * painel_x
+    painel_alt = ALTURA_TELA_VIRTUAL - 2 * painel_y
+    painel = pygame.Surface((painel_larg, painel_alt), pygame.SRCALPHA)
+    pygame.draw.rect(painel, (128, 128, 128, 160), painel.get_rect(), border_radius=20)
+    tela_virtual.blit(painel, (painel_x, painel_y))
+
     # Título principal
     desenhar_texto("PLAY TEA", fonte_titulo, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 100)
     
     # Fontes para diferentes seções
-    fonte_titulo_secao = pygame.font.Font(None, 42)
-    fonte_info = pygame.font.Font(None, 36)
-    fonte_desenvolvedores = pygame.font.Font(None, 32)
-    fonte_pequena = pygame.font.Font(None, 28)
+    fonte_titulo_secao = carregar_fonte(24)
+    fonte_info = carregar_fonte(22)
+    fonte_desenvolvedores = carregar_fonte(20)
+    fonte_pequena = carregar_fonte(16)
     
-    # Seção: Informações do Projeto
-    desenhar_texto("Trabalho de Graduação 2", fonte_titulo_secao, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 160)
-    desenhar_texto("Fatec Barueri - Faculdade de Tecnologia", fonte_info, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 200)
+    # Seção: Informações do Projeto removida conforme solicitação
     
     
     # Seção: Desenvolvedores (centralizados)
-    desenhar_texto("Desenvolvedores", fonte_titulo_secao, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 280)
-    y_desenvolvedores = 320
+    desenhar_texto("Desenvolvedores", fonte_titulo_secao, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 200)
+    y_desenvolvedores = 240
     desenvolvedores = [
         "DENILSON CONCEIÇÃO DE OLIVEIRA",
         "JONATHAS YOSHIOKA OLSEN TRAJANO DA SILVA",
@@ -706,13 +786,23 @@ def desenhar_tela_sobre(mouse_pos):
         "MATHEUS GARCIA BERTOI"
     ]
     for dev in desenvolvedores:
-        desenhar_texto(dev, fonte_desenvolvedores, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, y_desenvolvedores)
+        nome_formatado = dev.title()
+        desenhar_texto(nome_formatado, fonte_desenvolvedores, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, y_desenvolvedores)
         y_desenvolvedores += 30
     
-    # Seção: Orientador (centralizado)
-    desenhar_texto("Orientador", fonte_titulo_secao, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 480)
-    desenhar_texto("Prof. Dr. Irapuan Glória Júnior", fonte_info, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 520)
+    # Orientador junto aos demais nomes
+    y_desenvolvedores += 10
+    desenhar_texto("Orientador", fonte_titulo_secao, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, y_desenvolvedores)
+    y_desenvolvedores += 30
+    desenhar_texto("Prof. Dr. Irapuan Glória Júnior", fonte_info, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, y_desenvolvedores)
     
+    # Exibir logo centralizada na parte inferior do painel cinza (dentro do retângulo)
+    if logo_fatec is not None:
+        logo_rect = logo_fatec.get_rect()
+        logo_rect.centerx = LARGURA_TELA_VIRTUAL // 2
+        logo_rect.bottom = painel_y + painel_alt - 20
+        tela_virtual.blit(logo_fatec, logo_rect)
+
     # Versão no canto inferior direito
     texto_versao = fonte_pequena.render("Versão 1.1", True, BRANCO)
     rect_versao = texto_versao.get_rect()
@@ -727,7 +817,19 @@ def desenhar_tela_sobre(mouse_pos):
     
 def desenhar_jogo(mouse_pos=(0, 0)):
     tela_virtual.blit(fundo_img_atual, (0, 0))
-    pygame.draw.rect(tela_virtual, VERDE_INICIO, area_inicio)
+    # Desenha a área de início com imagem (fallback: retângulo verde)
+    if inicio_img_original is not None:
+        try:
+            # Usa o tamanho da chegada (sprite da casa) com escala relativa
+            largura_chegada = int(area_chegada.width * INICIO_ESCALA_RELATIVA)
+            altura_chegada = int(area_chegada.height * INICIO_ESCALA_RELATIVA)
+            img_inicio = pygame.transform.smoothscale(inicio_img_original, (largura_chegada, altura_chegada))
+            rect_img_inicio = img_inicio.get_rect(center=area_inicio.center)
+            tela_virtual.blit(img_inicio, rect_img_inicio)
+        except Exception:
+            pygame.draw.rect(tela_virtual, VERDE_INICIO, area_inicio)
+    else:
+        pygame.draw.rect(tela_virtual, VERDE_INICIO, area_inicio)
     
     # Fallback: desenha caminho retangular (caso não haja pontinhos)
     # Removido: não desenha mais o caminho quando não há pontinhos
@@ -739,7 +841,7 @@ def desenhar_jogo(mouse_pos=(0, 0)):
         pygame.draw.rect(tela_virtual, (0, 255, 0), area_chegada, 3)
         
         # Mostrar instruções
-        fonte_instrucoes = pygame.font.Font(None, 24)
+        fonte_instrucoes = carregar_fonte(16)
         instrucoes = [
             "E: Sair do modo edição",
             "I: Mover início",
@@ -773,13 +875,13 @@ def desenhar_jogo(mouse_pos=(0, 0)):
         pygame.draw.rect(tela_virtual, VERDE_FIM, area_chegada)
 
     # Nome da fase no topo centralizado
-    fonte_fase = pygame.font.Font(None, 48)
+    fonte_fase = carregar_fonte(28)
     nome_fase = NOMES_FASES.get(FASE_ATUAL_NUMERO, f"Fase {FASE_ATUAL_NUMERO}")
     desenhar_texto(nome_fase, fonte_fase, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 30)
     
     # Desenha pontuação no canto superior direito (se houver pontinhos)
     if True:
-        fonte_pontuacao = pygame.font.Font(None, 36)
+        fonte_pontuacao = carregar_fonte(18)
         texto_pontuacao = fonte_pontuacao.render(f"Pontos: {PONTOS_ACUMULADOS + pontuacao}", True, BRANCO)
         tela_virtual.blit(texto_pontuacao, (LARGURA_TELA_VIRTUAL - 150, 20))
         
@@ -796,7 +898,7 @@ def desenhar_jogo(mouse_pos=(0, 0)):
         desenhar_texto("Sair", fonte_config, BRANCO, tela_virtual, botao_sair_fase.centerx, botao_sair_fase.centery)
     
     # Nome da criança (ao lado do botão sair)
-    fonte_nome = pygame.font.Font(None, 32)
+    fonte_nome = carregar_fonte(18)
     texto_nome_crianca = fonte_nome.render(f"Criança: {NOME_CRIANCA}", True, BRANCO)
     # Posiciona o texto ao lado do botão sair
     tela_virtual.blit(texto_nome_crianca, (botao_sair_fase.right + 10, botao_sair_fase.centery - 10))
@@ -933,12 +1035,34 @@ while rodando:
                 if botao_voltar.collidepoint(pos_mouse): 
                     estado_jogo = TELA_INICIAL
                     salvar_configuracoes()  # Salvar ao sair das configurações
-                elif botao_editar_crianca.collidepoint(pos_mouse):
+                    # Encerra qualquer edição e teclado
+                    editando_nome_crianca = False
+                    editando_nome_responsavel = False
+                    texto_temporario_crianca = ""
+                    texto_temporario_responsavel = ""
+                    encerrar_teclado_texto()
+                elif campo_nome_crianca.collidepoint(pos_mouse):
                     editando_nome_crianca = True
                     texto_temporario_crianca = NOME_CRIANCA
-                elif botao_editar_responsavel.collidepoint(pos_mouse):
+                    editando_nome_responsavel = False
+                    iniciar_teclado_texto(campo_nome_crianca)
+                elif campo_nome_responsavel.collidepoint(pos_mouse):
                     editando_nome_responsavel = True
                     texto_temporario_responsavel = NOME_RESPONSAVEL
+                    editando_nome_crianca = False
+                    iniciar_teclado_texto(campo_nome_responsavel)
+                elif botao_salvar_nomes.collidepoint(pos_mouse):
+                    # Salvar ambos os campos (se estiverem em edição) e sair da edição
+                    if editando_nome_crianca:
+                        NOME_CRIANCA = texto_temporario_crianca
+                    if editando_nome_responsavel:
+                        NOME_RESPONSAVEL = texto_temporario_responsavel
+                    salvar_configuracoes()
+                    editando_nome_crianca = False
+                    editando_nome_responsavel = False
+                    texto_temporario_crianca = ""
+                    texto_temporario_responsavel = ""
+                    encerrar_teclado_texto()
                 for nome, rect in botoes_cor.items():
                     if rect.collidepoint(pos_mouse): 
                         COR_PONTINHOS = cores_disponiveis[nome]
@@ -1013,6 +1137,17 @@ while rodando:
                 drag_rect_idx = None
                 recomputar_pontinhos_fase_atual()
 
+        # Eventos de texto (Android envia TEXTINPUT)
+        if evento.type == pygame.TEXTINPUT:
+            if estado_jogo == CONFIGURACOES:
+                texto_digitado = evento.text
+                if editando_nome_crianca:
+                    if len(texto_temporario_crianca) < 20:
+                        texto_temporario_crianca += texto_digitado
+                elif editando_nome_responsavel:
+                    if len(texto_temporario_responsavel) < 20:
+                        texto_temporario_responsavel += texto_digitado
+
         if evento.type == pygame.KEYDOWN:
             # Tratamento de texto para configurações
             if estado_jogo == CONFIGURACOES:
@@ -1022,16 +1157,18 @@ while rodando:
                         NOME_CRIANCA = texto_temporario_crianca
                         editando_nome_crianca = False
                         salvar_configuracoes()
+                        encerrar_teclado_texto()
                     elif evento.key == pygame.K_ESCAPE:
                         # Cancelar edição
                         editando_nome_crianca = False
                         texto_temporario_crianca = ""
+                        encerrar_teclado_texto()
                     elif evento.key == pygame.K_BACKSPACE:
                         # Apagar caractere
                         texto_temporario_crianca = texto_temporario_crianca[:-1]
                     else:
                         # Adicionar caractere (limitado a 20 caracteres)
-                        if len(texto_temporario_crianca) < 20 and evento.unicode.isprintable():
+                        if len(texto_temporario_crianca) < 20 and getattr(evento, 'unicode', '').isprintable():
                             texto_temporario_crianca += evento.unicode
                 elif editando_nome_responsavel:
                     if evento.key == pygame.K_RETURN:
@@ -1039,16 +1176,18 @@ while rodando:
                         NOME_RESPONSAVEL = texto_temporario_responsavel
                         editando_nome_responsavel = False
                         salvar_configuracoes()
+                        encerrar_teclado_texto()
                     elif evento.key == pygame.K_ESCAPE:
                         # Cancelar edição
                         editando_nome_responsavel = False
                         texto_temporario_responsavel = ""
+                        encerrar_teclado_texto()
                     elif evento.key == pygame.K_BACKSPACE:
                         # Apagar caractere
                         texto_temporario_responsavel = texto_temporario_responsavel[:-1]
                     else:
                         # Adicionar caractere (limitado a 20 caracteres)
-                        if len(texto_temporario_responsavel) < 20 and evento.unicode.isprintable():
+                        if len(texto_temporario_responsavel) < 20 and getattr(evento, 'unicode', '').isprintable():
                             texto_temporario_responsavel += evento.unicode
             
             elif estado_jogo == JOGANDO and fase_atual in [1, 2, 3]:
