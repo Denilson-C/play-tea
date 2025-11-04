@@ -22,7 +22,7 @@ source.include_patterns = assets/*,data/*,src/*
 version = 1.1
 
 # (list) Requisitos da aplicação
-requirements = python3,kivy,pygame,android
+requirements = python3,pygame
 
 # (str) Permissões do Android
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
@@ -46,7 +46,7 @@ android.api = 31
 android.minapi = 21
 
 # (int) Versão do NDK do Android
-android.ndk = 25b
+android.ndk = 23b
 
 # (int) Versão do SDK do Android
 android.sdk = 31
@@ -55,7 +55,7 @@ android.sdk = 31
 android.private_storage = True
 
 # (str) Arquitetura Android (pode ser armeabi-v7a, arm64-v8a, x86, x86_64)
-android.archs = arm64-v8a,armeabi-v7a
+android.archs = arm64-v8a
 
 # (bool) Ativar backup do Android
 android.allow_backup = True
