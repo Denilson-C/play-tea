@@ -733,18 +733,23 @@ def desenhar_configuracoes(mouse_pos):
 def desenhar_tela_sobre(mouse_pos):
     desenhar_fundo_com_overlay()
     
-    # Carregar e exibir logo da Fatec Barueri no canto superior direito
+    # Carregar logo (vai ser exibida ao final, centralizada na parte inferior)
     try:
         logo_fatec = pygame.image.load(os.path.join(IMAGES_DIR, "logo.png")).convert_alpha()
-        # Redimensionar o logo para um tamanho apropriado
         logo_fatec = pygame.transform.smoothscale(logo_fatec, (120, 60))
-        # Posicionar no canto superior direito
-        logo_rect = logo_fatec.get_rect()
-        logo_rect.topright = (LARGURA_TELA_VIRTUAL - 20, 20)
-        tela_virtual.blit(logo_fatec, logo_rect)
     except pygame.error as e:
+        logo_fatec = None
         print(f"Aviso: não foi possível carregar o logo da Fatec: {e}")
     
+    # Painel de fundo semitransparente para os textos (cinza)
+    painel_x = 60
+    painel_y = 60
+    painel_larg = LARGURA_TELA_VIRTUAL - 2 * painel_x
+    painel_alt = ALTURA_TELA_VIRTUAL - 2 * painel_y
+    painel = pygame.Surface((painel_larg, painel_alt), pygame.SRCALPHA)
+    pygame.draw.rect(painel, (128, 128, 128, 160), painel.get_rect(), border_radius=20)
+    tela_virtual.blit(painel, (painel_x, painel_y))
+
     # Título principal
     desenhar_texto("PLAY TEA", fonte_titulo, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 100)
     
@@ -754,14 +759,12 @@ def desenhar_tela_sobre(mouse_pos):
     fonte_desenvolvedores = carregar_fonte(20)
     fonte_pequena = carregar_fonte(16)
     
-    # Seção: Informações do Projeto
-    desenhar_texto("Trabalho de Graduação 2", fonte_titulo_secao, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 160)
-    desenhar_texto("Fatec Barueri - Faculdade de Tecnologia", fonte_info, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 200)
+    # Seção: Informações do Projeto removida conforme solicitação
     
     
     # Seção: Desenvolvedores (centralizados)
-    desenhar_texto("Desenvolvedores", fonte_titulo_secao, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 280)
-    y_desenvolvedores = 320
+    desenhar_texto("Desenvolvedores", fonte_titulo_secao, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 200)
+    y_desenvolvedores = 240
     desenvolvedores = [
         "DENILSON CONCEIÇÃO DE OLIVEIRA",
         "JONATHAS YOSHIOKA OLSEN TRAJANO DA SILVA",
@@ -769,13 +772,23 @@ def desenhar_tela_sobre(mouse_pos):
         "MATHEUS GARCIA BERTOI"
     ]
     for dev in desenvolvedores:
-        desenhar_texto(dev, fonte_desenvolvedores, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, y_desenvolvedores)
+        nome_formatado = dev.title()
+        desenhar_texto(nome_formatado, fonte_desenvolvedores, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, y_desenvolvedores)
         y_desenvolvedores += 30
     
-    # Seção: Orientador (centralizado)
-    desenhar_texto("Orientador", fonte_titulo_secao, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 480)
-    desenhar_texto("Prof. Dr. Irapuan Glória Júnior", fonte_info, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 520)
+    # Orientador junto aos demais nomes
+    y_desenvolvedores += 10
+    desenhar_texto("Orientador", fonte_titulo_secao, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, y_desenvolvedores)
+    y_desenvolvedores += 30
+    desenhar_texto("Prof. Dr. Irapuan Glória Júnior", fonte_info, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, y_desenvolvedores)
     
+    # Exibir logo centralizada na parte inferior do painel cinza (dentro do retângulo)
+    if logo_fatec is not None:
+        logo_rect = logo_fatec.get_rect()
+        logo_rect.centerx = LARGURA_TELA_VIRTUAL // 2
+        logo_rect.bottom = painel_y + painel_alt - 20
+        tela_virtual.blit(logo_fatec, logo_rect)
+
     # Versão no canto inferior direito
     texto_versao = fonte_pequena.render("Versão 1.1", True, BRANCO)
     rect_versao = texto_versao.get_rect()
