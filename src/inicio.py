@@ -122,6 +122,7 @@ editando_nome_crianca = False
 editando_nome_responsavel = False
 texto_temporario_crianca = ""
 texto_temporario_responsavel = ""
+teclado_ativo = False
 
 #Requisitos para desbloquear fases
 
@@ -336,8 +337,7 @@ Y_INICIO_COLUNA = 260
 # Campos de texto para nomes
 campo_nome_crianca = pygame.Rect(LARGURA_TELA_VIRTUAL / 2 - 150, 120, 300, 35)
 campo_nome_responsavel = pygame.Rect(LARGURA_TELA_VIRTUAL / 2 - 150, 160, 300, 35)
-botao_editar_crianca = pygame.Rect(LARGURA_TELA_VIRTUAL / 2 + 160, 120, 60, 35)
-botao_editar_responsavel = pygame.Rect(LARGURA_TELA_VIRTUAL / 2 + 160, 160, 60, 35)
+botao_salvar_nomes = pygame.Rect(LARGURA_TELA_VIRTUAL / 2 + 170, 140, 140, 40)
 
 # Botões de Cor (coluna esquerda)
 y_pos_cor = Y_INICIO_COLUNA
@@ -379,6 +379,25 @@ def tocar_musica_por_nome(nome):
             print("Mixer reinicializado")
         except:
             print("Erro ao reinicializar mixer")
+
+def iniciar_teclado_texto(rect_alvo=None):
+    global teclado_ativo
+    try:
+        pygame.key.start_text_input()
+        if rect_alvo is not None:
+            # Define a área onde o cursor/IME deve focar
+            pygame.key.set_text_input_rect(rect_alvo)
+        teclado_ativo = True
+    except Exception:
+        teclado_ativo = False
+
+def encerrar_teclado_texto():
+    global teclado_ativo
+    try:
+        pygame.key.stop_text_input()
+        teclado_ativo = False
+    except Exception:
+        teclado_ativo = False
 
 def carregar_som_vitoria():
     """Carrega o som de vitória"""
@@ -696,16 +715,11 @@ def desenhar_configuracoes(mouse_pos):
     desenhar_texto(texto_crianca, fonte_campo, PRETO, tela_virtual, campo_nome_crianca.centerx, campo_nome_crianca.centery)
     desenhar_texto(texto_responsavel, fonte_campo, PRETO, tela_virtual, campo_nome_responsavel.centerx, campo_nome_responsavel.centery)
     
-    # Botões de editar
-    cor_btn_edit_crianca = COR_BOTAO_HOVER if botao_editar_crianca.collidepoint(mouse_pos) else COR_BOTAO
-    cor_btn_edit_responsavel = COR_BOTAO_HOVER if botao_editar_responsavel.collidepoint(mouse_pos) else COR_BOTAO
-    
-    pygame.draw.rect(tela_virtual, cor_btn_edit_crianca, botao_editar_crianca, border_radius=5)
-    pygame.draw.rect(tela_virtual, cor_btn_edit_responsavel, botao_editar_responsavel, border_radius=5)
-    
-    fonte_btn = carregar_fonte(16)
-    desenhar_texto("Editar", fonte_btn, BRANCO, tela_virtual, botao_editar_crianca.centerx, botao_editar_crianca.centery)
-    desenhar_texto("Editar", fonte_btn, BRANCO, tela_virtual, botao_editar_responsavel.centerx, botao_editar_responsavel.centery)
+    # Botão único de salvar
+    cor_btn_salvar = COR_BOTAO_HOVER if botao_salvar_nomes.collidepoint(mouse_pos) else COR_BOTAO
+    pygame.draw.rect(tela_virtual, cor_btn_salvar, botao_salvar_nomes, border_radius=8)
+    fonte_btn = carregar_fonte(18)
+    desenhar_texto("Salvar", fonte_btn, BRANCO, tela_virtual, botao_salvar_nomes.centerx, botao_salvar_nomes.centery)
     
     # Títulos das colunas (movidos para baixo)
     desenhar_texto("Cor dos pontinhos", fonte_config, BRANCO, tela_virtual, COLUNA_ESQ_X + LARG_BOTAO/2, 220)
@@ -1021,12 +1035,34 @@ while rodando:
                 if botao_voltar.collidepoint(pos_mouse): 
                     estado_jogo = TELA_INICIAL
                     salvar_configuracoes()  # Salvar ao sair das configurações
-                elif botao_editar_crianca.collidepoint(pos_mouse):
+                    # Encerra qualquer edição e teclado
+                    editando_nome_crianca = False
+                    editando_nome_responsavel = False
+                    texto_temporario_crianca = ""
+                    texto_temporario_responsavel = ""
+                    encerrar_teclado_texto()
+                elif campo_nome_crianca.collidepoint(pos_mouse):
                     editando_nome_crianca = True
                     texto_temporario_crianca = NOME_CRIANCA
-                elif botao_editar_responsavel.collidepoint(pos_mouse):
+                    editando_nome_responsavel = False
+                    iniciar_teclado_texto(campo_nome_crianca)
+                elif campo_nome_responsavel.collidepoint(pos_mouse):
                     editando_nome_responsavel = True
                     texto_temporario_responsavel = NOME_RESPONSAVEL
+                    editando_nome_crianca = False
+                    iniciar_teclado_texto(campo_nome_responsavel)
+                elif botao_salvar_nomes.collidepoint(pos_mouse):
+                    # Salvar ambos os campos (se estiverem em edição) e sair da edição
+                    if editando_nome_crianca:
+                        NOME_CRIANCA = texto_temporario_crianca
+                    if editando_nome_responsavel:
+                        NOME_RESPONSAVEL = texto_temporario_responsavel
+                    salvar_configuracoes()
+                    editando_nome_crianca = False
+                    editando_nome_responsavel = False
+                    texto_temporario_crianca = ""
+                    texto_temporario_responsavel = ""
+                    encerrar_teclado_texto()
                 for nome, rect in botoes_cor.items():
                     if rect.collidepoint(pos_mouse): 
                         COR_PONTINHOS = cores_disponiveis[nome]
@@ -1101,6 +1137,17 @@ while rodando:
                 drag_rect_idx = None
                 recomputar_pontinhos_fase_atual()
 
+        # Eventos de texto (Android envia TEXTINPUT)
+        if evento.type == pygame.TEXTINPUT:
+            if estado_jogo == CONFIGURACOES:
+                texto_digitado = evento.text
+                if editando_nome_crianca:
+                    if len(texto_temporario_crianca) < 20:
+                        texto_temporario_crianca += texto_digitado
+                elif editando_nome_responsavel:
+                    if len(texto_temporario_responsavel) < 20:
+                        texto_temporario_responsavel += texto_digitado
+
         if evento.type == pygame.KEYDOWN:
             # Tratamento de texto para configurações
             if estado_jogo == CONFIGURACOES:
@@ -1110,16 +1157,18 @@ while rodando:
                         NOME_CRIANCA = texto_temporario_crianca
                         editando_nome_crianca = False
                         salvar_configuracoes()
+                        encerrar_teclado_texto()
                     elif evento.key == pygame.K_ESCAPE:
                         # Cancelar edição
                         editando_nome_crianca = False
                         texto_temporario_crianca = ""
+                        encerrar_teclado_texto()
                     elif evento.key == pygame.K_BACKSPACE:
                         # Apagar caractere
                         texto_temporario_crianca = texto_temporario_crianca[:-1]
                     else:
                         # Adicionar caractere (limitado a 20 caracteres)
-                        if len(texto_temporario_crianca) < 20 and evento.unicode.isprintable():
+                        if len(texto_temporario_crianca) < 20 and getattr(evento, 'unicode', '').isprintable():
                             texto_temporario_crianca += evento.unicode
                 elif editando_nome_responsavel:
                     if evento.key == pygame.K_RETURN:
@@ -1127,16 +1176,18 @@ while rodando:
                         NOME_RESPONSAVEL = texto_temporario_responsavel
                         editando_nome_responsavel = False
                         salvar_configuracoes()
+                        encerrar_teclado_texto()
                     elif evento.key == pygame.K_ESCAPE:
                         # Cancelar edição
                         editando_nome_responsavel = False
                         texto_temporario_responsavel = ""
+                        encerrar_teclado_texto()
                     elif evento.key == pygame.K_BACKSPACE:
                         # Apagar caractere
                         texto_temporario_responsavel = texto_temporario_responsavel[:-1]
                     else:
                         # Adicionar caractere (limitado a 20 caracteres)
-                        if len(texto_temporario_responsavel) < 20 and evento.unicode.isprintable():
+                        if len(texto_temporario_responsavel) < 20 and getattr(evento, 'unicode', '').isprintable():
                             texto_temporario_responsavel += evento.unicode
             
             elif estado_jogo == JOGANDO and fase_atual in [1, 2, 3]:
