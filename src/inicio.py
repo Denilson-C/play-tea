@@ -36,6 +36,57 @@ tela_virtual = pygame.Surface((LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL))
 
 pygame.display.set_caption("PLAY TEA")
 
+# --- Fontes (OpenDyslexic) ---
+FONTS_DIR = os.path.join(ASSETS_DIR, "fonts")
+
+def carregar_fonte(tamanho, negrito=False, italico=False):
+    """Tenta carregar a fonte OpenDyslexic. Fallback para fonte padrão.
+
+    A ordem é:
+    1) Arquivo local em assets/fonts (vários nomes/formatos comuns)
+    2) Fonte instalada no sistema (match_font com nomes conhecidos)
+    3) Fonte padrão do pygame
+    """
+    # 1) Tenta arquivos locais comuns
+    possiveis_arquivos = [
+        "OpenDyslexic-Regular.otf",
+        "OpenDyslexic-Regular.ttf",
+        "OpenDyslexic3-Regular.otf",
+        "OpenDyslexic3-Regular.ttf",
+        "OpenDyslexic.otf",
+        "OpenDyslexic.ttf",
+    ]
+    for nome_arquivo in possiveis_arquivos:
+        caminho = os.path.join(FONTS_DIR, nome_arquivo)
+        if os.path.exists(caminho):
+            try:
+                fonte = pygame.font.Font(caminho, tamanho)
+                fonte.set_bold(negrito)
+                fonte.set_italic(italico)
+                return fonte
+            except Exception:
+                pass
+
+    # 2) Tenta via fonte instalada no sistema
+    nomes_sistema = [
+        "OpenDyslexic", "OpenDyslexic3", "opendyslexic", "opendyslexic3",
+        "Open Dyslexic", "Open Dyslexic 3"
+    ]
+    for nome in nomes_sistema:
+        try:
+            caminho_match = pygame.font.match_font(nome, bold=negrito, italic=italico)
+            if caminho_match:
+                return pygame.font.Font(caminho_match, tamanho)
+        except Exception:
+            pass
+
+    # 3) Fallback padrão
+    try:
+        fonte = pygame.font.SysFont(None, tamanho, bold=negrito, italic=italico)
+        return fonte
+    except Exception:
+        return pygame.font.Font(None, tamanho)
+
 # --- Estados do Jogo ---
 TELA_INICIAL = "tela_inicial"
 SELECAO_FASE = "selecao_fase"
@@ -54,6 +105,7 @@ COR_BOTAO_HOVER = (150, 150, 255)
 
 # --- Variáveis de Configuração ---
 COR_PONTINHOS = (255, 255, 0)  # Amarelo padrão para pontinhos
+INICIO_ESCALA_RELATIVA = 1.3  # Escala do portão em relação ao tamanho da casa
 MUSICAS_DISPONIVEIS = {
     "Mudo": None,
     "Ruído 1": os.path.join(AUDIO_DIR, "musica1.ogg"),
@@ -97,9 +149,9 @@ NOMES_FASES = {
 
 
 # --- Fontes ---
-fonte_titulo = pygame.font.Font(None, 90)
-fonte_botao = pygame.font.Font(None, 50)
-fonte_config = pygame.font.Font(None, 40)
+fonte_titulo = carregar_fonte(48)
+fonte_botao = carregar_fonte(24)
+fonte_config = carregar_fonte(22)
 
 # --- Carregar imagem de fundo para menu ---
 fundo_menu_img = pygame.image.load(os.path.join(IMAGES_DIR, "fundo.png"))
@@ -136,6 +188,7 @@ peixinho_img_atual = None
 fundo_img_atual = None
 borda_img_atual = None
 chegada_img_atual = None
+inicio_img_original = None
 
 # Áreas e posições
 areas_validas_atual = []
@@ -378,6 +431,16 @@ def carregar_fase(numero_fase):
         # <--- ALTERAÇÃO: Escala para o tamanho da TELA VIRTUAL ---
         fundo_img_atual = pygame.transform.scale(fundo_img_atual, (LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL))
         
+        # Carrega imagem da área de início (portão)
+        global inicio_img_original
+        inicio_img_original = None
+        try:
+            caminho_inicio = os.path.join(IMAGES_DIR, "portao.png")
+            if os.path.exists(caminho_inicio):
+                inicio_img_original = pygame.image.load(caminho_inicio).convert_alpha()
+        except pygame.error as e:
+            print(f"Aviso: não foi possível carregar imagem de início: {e}")
+        
     except pygame.error as e:
         print(f"Erro ao carregar recursos da fase {numero_fase}: {e}")
         fundo_img_atual = pygame.Surface((LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL))
@@ -611,7 +674,7 @@ def desenhar_configuracoes(mouse_pos):
     desenhar_texto("Configurações", fonte_titulo, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 50)
     
     # Campos de nome
-    fonte_label = pygame.font.Font(None, 32)
+    fonte_label = carregar_fonte(20)
     desenhar_texto("Criança:", fonte_label, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2.2 - 180, 140)
     desenhar_texto("Responsável:", fonte_label, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2.35 - 180, 180)
     
@@ -626,7 +689,7 @@ def desenhar_configuracoes(mouse_pos):
     pygame.draw.rect(tela_virtual, PRETO, campo_nome_responsavel, 2, border_radius=5)
     
     # Texto dos campos
-    fonte_campo = pygame.font.Font(None, 28)
+    fonte_campo = carregar_fonte(18)
     texto_crianca = texto_temporario_crianca if editando_nome_crianca else NOME_CRIANCA
     texto_responsavel = texto_temporario_responsavel if editando_nome_responsavel else NOME_RESPONSAVEL
     
@@ -640,7 +703,7 @@ def desenhar_configuracoes(mouse_pos):
     pygame.draw.rect(tela_virtual, cor_btn_edit_crianca, botao_editar_crianca, border_radius=5)
     pygame.draw.rect(tela_virtual, cor_btn_edit_responsavel, botao_editar_responsavel, border_radius=5)
     
-    fonte_btn = pygame.font.Font(None, 24)
+    fonte_btn = carregar_fonte(16)
     desenhar_texto("Editar", fonte_btn, BRANCO, tela_virtual, botao_editar_crianca.centerx, botao_editar_crianca.centery)
     desenhar_texto("Editar", fonte_btn, BRANCO, tela_virtual, botao_editar_responsavel.centerx, botao_editar_responsavel.centery)
     
@@ -686,10 +749,10 @@ def desenhar_tela_sobre(mouse_pos):
     desenhar_texto("PLAY TEA", fonte_titulo, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 100)
     
     # Fontes para diferentes seções
-    fonte_titulo_secao = pygame.font.Font(None, 42)
-    fonte_info = pygame.font.Font(None, 36)
-    fonte_desenvolvedores = pygame.font.Font(None, 32)
-    fonte_pequena = pygame.font.Font(None, 28)
+    fonte_titulo_secao = carregar_fonte(24)
+    fonte_info = carregar_fonte(22)
+    fonte_desenvolvedores = carregar_fonte(20)
+    fonte_pequena = carregar_fonte(16)
     
     # Seção: Informações do Projeto
     desenhar_texto("Trabalho de Graduação 2", fonte_titulo_secao, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 160)
@@ -727,7 +790,19 @@ def desenhar_tela_sobre(mouse_pos):
     
 def desenhar_jogo(mouse_pos=(0, 0)):
     tela_virtual.blit(fundo_img_atual, (0, 0))
-    pygame.draw.rect(tela_virtual, VERDE_INICIO, area_inicio)
+    # Desenha a área de início com imagem (fallback: retângulo verde)
+    if inicio_img_original is not None:
+        try:
+            # Usa o tamanho da chegada (sprite da casa) com escala relativa
+            largura_chegada = int(area_chegada.width * INICIO_ESCALA_RELATIVA)
+            altura_chegada = int(area_chegada.height * INICIO_ESCALA_RELATIVA)
+            img_inicio = pygame.transform.smoothscale(inicio_img_original, (largura_chegada, altura_chegada))
+            rect_img_inicio = img_inicio.get_rect(center=area_inicio.center)
+            tela_virtual.blit(img_inicio, rect_img_inicio)
+        except Exception:
+            pygame.draw.rect(tela_virtual, VERDE_INICIO, area_inicio)
+    else:
+        pygame.draw.rect(tela_virtual, VERDE_INICIO, area_inicio)
     
     # Fallback: desenha caminho retangular (caso não haja pontinhos)
     # Removido: não desenha mais o caminho quando não há pontinhos
@@ -739,7 +814,7 @@ def desenhar_jogo(mouse_pos=(0, 0)):
         pygame.draw.rect(tela_virtual, (0, 255, 0), area_chegada, 3)
         
         # Mostrar instruções
-        fonte_instrucoes = pygame.font.Font(None, 24)
+        fonte_instrucoes = carregar_fonte(16)
         instrucoes = [
             "E: Sair do modo edição",
             "I: Mover início",
@@ -773,13 +848,13 @@ def desenhar_jogo(mouse_pos=(0, 0)):
         pygame.draw.rect(tela_virtual, VERDE_FIM, area_chegada)
 
     # Nome da fase no topo centralizado
-    fonte_fase = pygame.font.Font(None, 48)
+    fonte_fase = carregar_fonte(28)
     nome_fase = NOMES_FASES.get(FASE_ATUAL_NUMERO, f"Fase {FASE_ATUAL_NUMERO}")
     desenhar_texto(nome_fase, fonte_fase, BRANCO, tela_virtual, LARGURA_TELA_VIRTUAL / 2, 30)
     
     # Desenha pontuação no canto superior direito (se houver pontinhos)
     if True:
-        fonte_pontuacao = pygame.font.Font(None, 36)
+        fonte_pontuacao = carregar_fonte(18)
         texto_pontuacao = fonte_pontuacao.render(f"Pontos: {PONTOS_ACUMULADOS + pontuacao}", True, BRANCO)
         tela_virtual.blit(texto_pontuacao, (LARGURA_TELA_VIRTUAL - 150, 20))
         
@@ -796,7 +871,7 @@ def desenhar_jogo(mouse_pos=(0, 0)):
         desenhar_texto("Sair", fonte_config, BRANCO, tela_virtual, botao_sair_fase.centerx, botao_sair_fase.centery)
     
     # Nome da criança (ao lado do botão sair)
-    fonte_nome = pygame.font.Font(None, 32)
+    fonte_nome = carregar_fonte(18)
     texto_nome_crianca = fonte_nome.render(f"Criança: {NOME_CRIANCA}", True, BRANCO)
     # Posiciona o texto ao lado do botão sair
     tela_virtual.blit(texto_nome_crianca, (botao_sair_fase.right + 10, botao_sair_fase.centery - 10))
