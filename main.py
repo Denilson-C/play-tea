@@ -9,42 +9,34 @@ import pygame
 import json
 import os
 import sys
-import asyncio  # <-- CORREÇÃO 1: Adicionado asyncio
+import asyncio
 
-# --- Configuração de Caminhos (CORRIGIDO PARA PYGBAG/WEB) ---
-# No Pygbag/Web, os caminhos devem ser relativos ao main.py.
-# Assumindo a estrutura: src/main.py, src/assets/images, src/data
-# Removemos a dependência de __file__ e PROJECT_ROOT que não funcionam no browser.
+# --- Configuração de Caminhos ---
+# Os caminhos são relativos ao main.py para compatibilidade com pygbag
 ASSETS_DIR = "assets"
 IMAGES_DIR = os.path.join(ASSETS_DIR, "images")
 AUDIO_DIR = os.path.join(ASSETS_DIR, "audio")
 DATA_DIR = "data"
-# -----------------------------------------------------------------
 
 # --- Inicialização ---
 pygame.init()
-# Configurações específicas para Android
 try:
     pygame.mixer.pre_init(frequency=22050, size=-16, channels=2, buffer=512)
     pygame.mixer.init()
 except:
-    # Fallback para configuração padrão
     pygame.mixer.init()
 
 # --- Constantes e Configurações ---
-# <--- ALTERAÇÃO: Definimos uma resolução interna (virtual) fixa ---
 LARGURA_TELA_VIRTUAL = 800
 ALTURA_TELA_VIRTUAL = 600
 
-# <--- ALTERAÇÃO: A tela principal agora é redimensionável ---
 tela = pygame.display.set_mode((LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL), pygame.RESIZABLE)
-# <--- NOVO: Criamos a superfície interna onde o jogo será desenhado ---
 tela_virtual = pygame.Surface((LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL))
 
 pygame.display.set_caption("PLAY TEA")
 
 # --- Fontes (OpenDyslexic) ---
-FONTS_DIR = os.path.join(ASSETS_DIR, "fonts") # Caminho corrigido
+FONTS_DIR = os.path.join(ASSETS_DIR, "fonts")
 
 def carregar_fonte(tamanho, negrito=False, italico=False):
     """Tenta carregar a fonte OpenDyslexic. Fallback para fonte padrão.
@@ -115,7 +107,6 @@ COR_PONTINHOS = (255, 255, 0)  # Amarelo padrão para pontinhos
 INICIO_ESCALA_RELATIVA = 1.3  # Escala do portão em relação ao tamanho da casa
 MUSICAS_DISPONIVEIS = {
     "Mudo": None,
-    # Caminhos corrigidos
     "Ruído 1": os.path.join(AUDIO_DIR, "musica1.ogg"),
     "Ruído 2": os.path.join(AUDIO_DIR, "musica2.ogg")
 }
@@ -163,15 +154,13 @@ fonte_botao = carregar_fonte(24)
 fonte_config = carregar_fonte(22)
 
 # --- Carregar imagem de fundo para menu ---
-# Caminho corrigido
 fundo_menu_img = pygame.image.load(os.path.join(IMAGES_DIR, "fundo.png"))
 fundo_menu_img = pygame.transform.smoothscale(fundo_menu_img, (LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL))
 # Aplicar desfoque suave
 fundo_menu_img = pygame.transform.smoothscale(fundo_menu_img, (LARGURA_TELA_VIRTUAL//2, ALTURA_TELA_VIRTUAL//2))
 fundo_menu_img = pygame.transform.smoothscale(fundo_menu_img, (LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL))
 
-# --- ESTRUTURA DE FASES (usando as constantes da tela virtual) ---
-# Caminhos corrigidos
+# --- ESTRUTURA DE FASES ---
 FASES = {
     1: {
         "peixe_img": os.path.join(IMAGES_DIR, "cachorro.png"),
@@ -193,9 +182,6 @@ FASES = {
     }
 }
 
-# --- Variáveis Globais do Jogo ---
-# (O resto do seu código de variáveis globais... é muito e está correto)
-# ...
 # --- Variáveis Globais do Jogo ---
 # Imagens e recursos
 peixinho_img_atual = None
@@ -239,8 +225,6 @@ DURACAO_EFEITO_VITORIA = 2000  # 2 segundos em milissegundos
 som_vitoria = None
 
 # --- Funções de Gerenciamento ---
-# (Todo o seu código de funções... está correto)
-# ...
 def resetar_edicao():
     """Reseta todas as variáveis de modo de edição"""
     global edit_mode, dragging, drag_rect_idx, editando_ponto_inicio, editando_ponto_chegada
@@ -417,8 +401,7 @@ def carregar_som_vitoria():
     """Carrega o som de vitória"""
     global som_vitoria
     try:
-        # Caminho corrigido
-        arquivo_som = os.path.join(AUDIO_DIR, "vitoria.ogg")
+            arquivo_som = os.path.join(AUDIO_DIR, "vitoria.ogg")
         if os.path.exists(arquivo_som):
             som_vitoria = pygame.mixer.Sound(arquivo_som)
             print("Som de vitória carregado com sucesso!")
@@ -453,25 +436,21 @@ def carregar_fase(numero_fase):
     # Usa a fase atual definida por FASE_ATUAL_NUMERO, diferença apenas no sprite
     fase_info = FASES[FASE_ATUAL_NUMERO].copy()
     if numero_fase == 2:
-        # Caminho corrigido
-        fase_info["peixe_img"] = os.path.join(IMAGES_DIR, "gato.png")  # Gatinho usa sprite do gato
+            fase_info["peixe_img"] = os.path.join(IMAGES_DIR, "gato.png")  # Gatinho usa sprite do gato
     else:
-        # Caminho corrigido
-        fase_info["peixe_img"] = os.path.join(IMAGES_DIR, "cachorro.png")  # Cachorrinho usa sprite do cachorro
+            fase_info["peixe_img"] = os.path.join(IMAGES_DIR, "cachorro.png")  # Cachorrinho usa sprite do cachorro
     try:
         peixinho_img_atual = pygame.image.load(fase_info["peixe_img"]).convert_alpha()
         peixinho_img_atual = pygame.transform.scale(peixinho_img_atual, (80, 80))
         
         fundo_img_atual = pygame.image.load(fase_info["fundo_img"]).convert()
-        # <--- ALTERAÇÃO: Escala para o tamanho da TELA VIRTUAL ---
         fundo_img_atual = pygame.transform.scale(fundo_img_atual, (LARGURA_TELA_VIRTUAL, ALTURA_TELA_VIRTUAL))
         
         # Carrega imagem da área de início (portão)
         global inicio_img_original
         inicio_img_original = None
         try:
-            # Caminho corrigido
-            caminho_inicio = os.path.join(IMAGES_DIR, "portao.png")
+                    caminho_inicio = os.path.join(IMAGES_DIR, "portao.png")
             if os.path.exists(caminho_inicio):
                 inicio_img_original = pygame.image.load(caminho_inicio).convert_alpha()
         except pygame.error as e:
@@ -534,20 +513,16 @@ def salvar_fase_editada():
     }
     try:
         filename = f"fase{FASE_ATUAL_NUMERO}_editada.json"
-        # Caminho corrigido
         filepath = os.path.join(DATA_DIR, filename)
-        
-        # Garante que o diretório 'data' exista (especialmente para web/pygbag)
-        # Embora o Pygbag possa não ter permissão de escrita, 
-        # esta é a maneira correta se ele 'simular' a escrita.
+
         if not os.path.exists(DATA_DIR):
             os.makedirs(DATA_DIR)
-            
+
         with open(filepath, "w") as f:
             json.dump(dados, f)
         print(f"Fase {FASE_ATUAL_NUMERO} salva com sucesso!")
     except Exception as e:
-        print(f"Erro ao salvar: {e}") # Pygbag provavelmente mostrará "Read-only filesystem"
+        print(f"Erro ao salvar: {e}")
 
 def salvar_configuracoes():
     """Salva as configurações do jogo em arquivo JSON"""
@@ -562,8 +537,7 @@ def salvar_configuracoes():
         "nome_responsavel": NOME_RESPONSAVEL
     }
     try:
-        # Caminho corrigido
-        config_path = os.path.join(DATA_DIR, "configuracoes.json")
+            config_path = os.path.join(DATA_DIR, "configuracoes.json")
 
         if not os.path.exists(DATA_DIR):
             os.makedirs(DATA_DIR)
@@ -572,13 +546,12 @@ def salvar_configuracoes():
             json.dump(dados, f)
         print("Configurações salvas com sucesso!")
     except Exception as e:
-        print(f"Erro ao salvar configurações: {e}") # Pygbag provavelmente mostrará "Read-only filesystem"
+        print(f"Erro ao salvar configurações: {e}")
 
 def carregar_configuracoes():
     """Carrega as configurações do jogo do arquivo JSON"""
     try:
-        # Caminho corrigido
-        config_path = os.path.join(DATA_DIR, "configuracoes.json")
+            config_path = os.path.join(DATA_DIR, "configuracoes.json")
         if os.path.exists(config_path):
             with open(config_path, "r") as f:
                 dados = json.load(f)
@@ -606,8 +579,7 @@ def carregar_fase_editada():
     global pontinhos, area_inicio, area_chegada, areas_validas_atual
     try:
         filename = f"fase{FASE_ATUAL_NUMERO}_editada.json"
-        # Caminho corrigido
-        filepath = os.path.join(DATA_DIR, filename)
+            filepath = os.path.join(DATA_DIR, filename)
         if os.path.exists(filepath):
             with open(filepath, "r") as f:
                 dados = json.load(f)
@@ -781,8 +753,7 @@ def desenhar_tela_sobre(mouse_pos):
     
     # Carregar logo (vai ser exibida ao final, centralizada na parte inferior)
     try:
-        # Caminho corrigido
-        logo_fatec = pygame.image.load(os.path.join(IMAGES_DIR, "logo.png")).convert_alpha()
+            logo_fatec = pygame.image.load(os.path.join(IMAGES_DIR, "logo.png")).convert_alpha()
         logo_fatec = pygame.transform.smoothscale(logo_fatec, (120, 60))
     except pygame.error as e:
         logo_fatec = None
@@ -1008,10 +979,8 @@ def desenhar_borda_texturizada(superficie, rect, imagem, thickness=16):
         superficie.blit(tile, (rect.right - thickness // 2, y))
         y += altura
 
-# --- CORREÇÃO 3: Mover o Loop Principal para uma função 'async' ---
+# --- Loop Principal ---
 async def main_loop():
-    # Estas são as variáveis globais que seu loop MODIFICA.
-    # Precisamos declará-las para que a função 'async' possa alterá-las.
     global rodando, estado_jogo, pos_mouse, editando_nome_crianca, \
            editando_nome_responsavel, texto_temporario_crianca, \
            texto_temporario_responsavel, NOME_CRIANCA, NOME_RESPONSAVEL, \
@@ -1022,7 +991,6 @@ async def main_loop():
            desenhando_caminho, criando_linha_reta
 
     while rodando:
-        # <--- NOVO: Bloco de conversão de coordenadas do mouse ---
         pos_mouse_janela = pygame.mouse.get_pos()
         largura_janela_atual, altura_janela_atual = tela.get_size()
 
@@ -1033,31 +1001,22 @@ async def main_loop():
         
         offset_x = (largura_janela_atual - nova_largura_escalada) / 2
         offset_y = (altura_janela_atual - nova_altura_escalada) / 2
-        
-        # Converte a posição do mouse da janela real para a virtual
-        # Adicionado 'if escala > 0' para evitar divisão por zero se a janela for minimizada
+
         mouse_x_virtual = (pos_mouse_janela[0] - offset_x) / escala if escala > 0 else 0
         mouse_y_virtual = (pos_mouse_janela[1] - offset_y) / escala if escala > 0 else 0
         pos_mouse = (mouse_x_virtual, mouse_y_virtual)
 
-        # --- Processamento de Eventos (usa pos_mouse virtual) ---
+        # --- Processamento de Eventos ---
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
                 rodando = False
-            
+
             if evento.type == pygame.MOUSEBUTTONDOWN:
-                # Não usamos mais `evento.pos`, usamos a `pos_mouse` já convertida
                 if estado_jogo == TELA_INICIAL:
                     if botao_iniciar.collidepoint(pos_mouse): estado_jogo = SELECAO_FASE
                     if botao_config.collidepoint(pos_mouse): estado_jogo = CONFIGURACOES
                     if botao_sobre.collidepoint(pos_mouse): estado_jogo = SOBRE
-                
-                # elif estado_jogo == SELECAO_FASE:
-                #     for num, rect in botoes_fase.items():
-                #         if rect.collidepoint(pos_mouse):
-                #             carregar_fase(num)
-                #             estado_jogo = JOGANDO
-                #     if botao_voltar.collidepoint(pos_mouse): estado_jogo = TELA_INICIAL
+
                 elif estado_jogo == SELECAO_FASE:
                     for num, rect in botoes_fase.items():
                         if rect.collidepoint(pos_mouse):
@@ -1173,7 +1132,6 @@ async def main_loop():
                     drag_rect_idx = None
                     recomputar_pontinhos_fase_atual()
 
-            # Eventos de texto (Android envia TEXTINPUT)
             if evento.type == pygame.TEXTINPUT:
                 if estado_jogo == CONFIGURACOES:
                     texto_digitado = evento.text
@@ -1255,13 +1213,9 @@ async def main_loop():
                             # Limpar todos os pontinhos
                             limpar_pontinhos()
                         elif evento.key == pygame.K_s:
-                            # Salvar mudanças
-                            if False:  # Removido sistema de subfase
-                                salvar_subfase()
-                            else:
-                                salvar_fase_editada()
+                            salvar_fase_editada()
 
-        # --- Lógica do Jogo (usa pos_mouse virtual) ---
+        # --- Lógica do Jogo ---
         if estado_jogo == JOGANDO:
             futuro_peixinho_rect = peixinho_img_atual.get_rect(center=pos_mouse)
             
@@ -1333,7 +1287,6 @@ async def main_loop():
             desenhar_selecao_fase(pos_mouse)
         elif estado_jogo == JOGANDO:
             desenhar_jogo(pos_mouse)
-        # Estado SUBFASE removido - agora usa apenas JOGANDO
         elif estado_jogo == CONFIGURACOES:
             desenhar_configuracoes(pos_mouse)
         elif estado_jogo == SOBRE:
@@ -1341,15 +1294,13 @@ async def main_loop():
         elif estado_jogo == VITORIA:
             desenhar_tela_vitoria()
 
-        # <--- NOVO: Bloco final que redimensiona e desenha a tela virtual na tela real ---
-        tela.fill(PRETO) # Limpa a tela real com preto para criar as "letterboxes"
-        
-        # Recalcula a escala e a posição para o blit final
+        # Redimensionamento e renderização
+        tela.fill(PRETO)
+
         escala_final = min(tela.get_width() / LARGURA_TELA_VIRTUAL, tela.get_height() / ALTURA_TELA_VIRTUAL)
         nova_largura_final = int(LARGURA_TELA_VIRTUAL * escala_final)
         nova_altura_final = int(ALTURA_TELA_VIRTUAL * escala_final)
-        
-        # Adiciona verificação para evitar erro se a janela for minimizada (escala 0)
+
         if nova_largura_final > 0 and nova_altura_final > 0:
             tela_redimensionada = pygame.transform.smoothscale(tela_virtual, (nova_largura_final, nova_altura_final))
             
@@ -1359,30 +1310,21 @@ async def main_loop():
             tela.blit(tela_redimensionada, (pos_x_final, pos_y_final))
         
         pygame.display.flip()
-        
-        # <--- CORREÇÃO 4: A linha mais importante para o Pygbag ---
-        # Devolve o controle ao navegador para evitar que a aba trave.
+
         await asyncio.sleep(0)
 
-    # Fim do 'while rodando'
     pygame.quit()
-# Fim da função 'main_loop'
 
-# --- Inicialização e Ponto de Entrada ---
-# Variáveis que precisam ser globais para o loop (são definidas aqui
-# e modificadas dentro do loop)
+# --- Inicialização ---
 estado_jogo = TELA_INICIAL
 rodando = True
-pos_mouse = (0, 0) # Inicializado
+pos_mouse = (0, 0)
 
-# Carregar configurações salvas
 carregar_configuracoes()
-# Carregar som de vitória
 carregar_som_vitoria()
-# Tocar música automaticamente se não estiver em modo mudo
 if MUSICA_ATUAL_NOME != "Mudo":
     tocar_musica_por_nome(MUSICA_ATUAL_NOME)
 
-# --- CORREÇÃO 5: Chamar o loop principal usando asyncio ---
+# --- Ponto de Entrada ---
 if __name__ == "__main__":
     asyncio.run(main_loop())
