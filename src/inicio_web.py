@@ -976,28 +976,21 @@ def desenhar_borda_texturizada(superficie, rect, imagem, thickness=16):
         superficie.blit(tile, (rect.right - thickness // 2, y))
         y += altura
 
-# --- Loop Principal Assíncrono para Web ---
+# --- Loop Principal Assíncrono ---
 async def main():
-    """Loop principal assíncrono para compatibilidade com Pygbag/Web"""
     global estado_jogo, rodando
-
     estado_jogo = TELA_INICIAL
     rodando = True
-
+    
     # Carregar configurações salvas
     carregar_configuracoes()
     # Carregar som de vitória
     carregar_som_vitoria()
-# Tocar música automaticamente se não estiver em modo mudo
+    # Tocar música automaticamente se não estiver em modo mudo
     if MUSICA_ATUAL_NOME != "Mudo":
         tocar_musica_por_nome(MUSICA_ATUAL_NOME)
     while rodando:
-        # <--- WEB: Posição do mouse (tela fixa) ---
-
-    
-    
-    
-        # Converte a posição do mouse da janela real para a virtual
+        pos_mouse = pygame.mouse.get_pos()
 
         # --- Processamento de Eventos (usa pos_mouse virtual) ---
         for evento in pygame.event.get():
@@ -1300,11 +1293,7 @@ async def main():
         elif estado_jogo == VITORIA:
             desenhar_tela_vitoria()
 
-        # <--- WEB: Desenha diretamente na tela ---
         tela.blit(tela_virtual, (0, 0))
         pygame.display.flip()
-
-        # Permite que o navegador respire
         await asyncio.sleep(0)
-
     pygame.quit()
