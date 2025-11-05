@@ -14,7 +14,9 @@ venv/
 # Build/Dist
 build/
 dist/
-.buildozer/
+
+# Pygbag build
+web/
 
 # Tools caches
 .mypy_cache/
@@ -31,3 +33,5 @@ Thumbs.db
 # Logs
 *.log
 
+# Local data files
+data/*.json
