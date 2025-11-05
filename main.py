@@ -236,6 +236,8 @@ personagem_iniciou_movimento = False
 delay_seguir_ativo = False
 tempo_inicio_delay = 0
 DURACAO_DELAY_SEGUIR = 3000  # 3 segundos em milissegundos
+voltando_para_portao = False  # Controla se o pet está voltando para o portão
+VELOCIDADE_RETORNO = 5  # Velocidade do pet ao retornar para o portão (pixels por frame)
 
 # Efeito de vitória
 efeito_vitoria_ativo = False
@@ -1025,7 +1027,7 @@ async def main_loop():
            personagem_iniciou_movimento, PONTOS_ACUMULADOS, \
            edit_mode, editando_ponto_inicio, editando_ponto_chegada, \
            desenhando_caminho, criando_linha_reta, delay_seguir_ativo, \
-           tempo_inicio_delay
+           tempo_inicio_delay, voltando_para_portao
 
     while rodando:
         # <--- NOVO: Bloco de conversão de coordenadas do mouse ---
@@ -1286,8 +1288,31 @@ async def main_loop():
 
             # Movimento e coleta de pontinhos (desabilitado no modo de edição)
             if not (edit_mode and fase_atual in [1, 2, 3]):
-                # Verifica se o delay de seguir está ativo
-                if delay_seguir_ativo:
+                # 1. Se o pet está voltando para o portão após completar fase
+                if voltando_para_portao:
+                    # Calcula direção para o portão
+                    dx = area_inicio.centerx - posicao_peixinho[0]
+                    dy = area_inicio.centery - posicao_peixinho[1]
+                    distancia = (dx**2 + dy**2)**0.5
+
+                    # Se chegou no portão (distância menor que velocidade)
+                    if distancia < VELOCIDADE_RETORNO * 2:
+                        # Posiciona exatamente no centro do portão
+                        set_posicao_peixinho(area_inicio.center)
+                        # Desativa o retorno e ativa o delay
+                        voltando_para_portao = False
+                        delay_seguir_ativo = True
+                        tempo_inicio_delay = pygame.time.get_ticks()
+                    else:
+                        # Move em direção ao portão
+                        # Normaliza a direção e multiplica pela velocidade
+                        dx = (dx / distancia) * VELOCIDADE_RETORNO
+                        dy = (dy / distancia) * VELOCIDADE_RETORNO
+                        nova_pos = [posicao_peixinho[0] + dx, posicao_peixinho[1] + dy]
+                        set_posicao_peixinho(nova_pos)
+
+                # 2. Verifica se o delay de seguir está ativo
+                elif delay_seguir_ativo:
                     tempo_atual = pygame.time.get_ticks()
                     tempo_decorrido = tempo_atual - tempo_inicio_delay
 
@@ -1295,8 +1320,8 @@ async def main_loop():
                         # Delay terminou, desativa
                         delay_seguir_ativo = False
 
-                # Só move o personagem após o primeiro clique do jogador E se o delay não estiver ativo
-                if personagem_iniciou_movimento and not delay_seguir_ativo:
+                # 3. Movimento normal: segue o mouse após primeiro clique
+                elif personagem_iniciou_movimento:
                     set_posicao_peixinho(pos_mouse)
                 
                 # Verifica colisão com pontinhos (se existirem)
@@ -1318,9 +1343,8 @@ async def main_loop():
                         # Inicia efeito de vitória
                         iniciar_efeito_vitoria()
 
-                        # Ativa o delay de 3 segundos para seguir o mouse
-                        delay_seguir_ativo = True
-                        tempo_inicio_delay = pygame.time.get_ticks()
+                        # Ativa o retorno ao portão - o delay será ativado quando chegar
+                        voltando_para_portao = True
 
                         # Incrementa contador de repetições da fase atual
                         REPETICOES_FASE[FASE_ATUAL_NUMERO] += 1
