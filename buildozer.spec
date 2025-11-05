@@ -24,6 +24,9 @@ version = 1.1
 # (list) Requisitos da aplicação
 requirements = python3,pygame
 
+# (str) Versão do python-for-android a usar
+p4a.branch = develop
+
 # (str) Permissões do Android
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 
