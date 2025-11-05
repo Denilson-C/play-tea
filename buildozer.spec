@@ -13,7 +13,7 @@ package.domain = org.fatecbarueri
 source.dir = .
 
 # (list) Arquivos de código fonte a incluir (deixe vazio para incluir todos)
-source.include_exts = py,png,jpg,ogg,json,ttf
+source.include_exts = py,png,jpg,ogg,json,ttf,otf,woff,woff2
 
 # (list) Lista de inclusões usando padrão de correspondência
 source.include_patterns = assets/*,data/*,src/*

@@ -434,9 +434,12 @@ def iniciar_efeito_vitoria():
 
 # --- Funções ---
 def carregar_fase(numero_fase):
+    """Versão síncrona - mantida para compatibilidade"""
     global peixinho_img_atual, fundo_img_atual, areas_validas_atual, posicao_peixinho, raio_borda_atual, fase_atual, borda_img_atual, chegada_img_atual, pontinhos, pontuacao, edit_mode, dragging, drag_rect_idx
     global editando_ponto_inicio, editando_ponto_chegada, adicionando_segmento, segmento_temporario, desenhando_caminho, caminho_temporario, area_inicio, area_chegada
-    
+
+    print(f"🔄 Carregando fase {numero_fase}...")
+
     # Usa a fase atual definida por FASE_ATUAL_NUMERO, diferença apenas no sprite
     fase_info = FASES[FASE_ATUAL_NUMERO].copy()
     if numero_fase == 2:
@@ -976,34 +979,51 @@ def desenhar_borda_texturizada(superficie, rect, imagem, thickness=16):
         superficie.blit(tile, (rect.right - thickness // 2, y))
         y += altura
 
-# --- Loop Principal Assíncrono para Web ---
+# --- Loop Principal Assíncrono ---
 async def main():
-    """Loop principal assíncrono para compatibilidade com Pygbag/Web"""
     global estado_jogo, rodando
+
+    # Detecta se está no ambiente web (Pygbag/Emscripten)
+    import platform
+    is_web = platform.system() == 'Emscripten'
+
+    if is_web:
+        print("🌐 Rodando no navegador (Pygbag)")
 
     estado_jogo = TELA_INICIAL
     rodando = True
 
+    # Flag para carregar fase de forma assíncrona
+    fase_para_carregar = None
+
     # Carregar configurações salvas
     carregar_configuracoes()
+    await asyncio.sleep(0)  # Permite navegador processar
+
     # Carregar som de vitória
     carregar_som_vitoria()
-# Tocar música automaticamente se não estiver em modo mudo
+    await asyncio.sleep(0)  # Permite navegador processar
+
+    # Tocar música automaticamente se não estiver em modo mudo
     if MUSICA_ATUAL_NOME != "Mudo":
         tocar_musica_por_nome(MUSICA_ATUAL_NOME)
-    while rodando:
-        # <--- WEB: Posição do mouse (tela fixa) ---
+    await asyncio.sleep(0)  # Permite navegador processar
 
-    
-    
-    
-        # Converte a posição do mouse da janela real para a virtual
+    print("✅ Carregamento concluído, iniciando loop principal...")
+
+    while rodando:
+        # Carrega fase se necessário (de forma assíncrona)
+        if fase_para_carregar is not None:
+            carregar_fase(fase_para_carregar)
+            fase_para_carregar = None
+            await asyncio.sleep(0)  # Permite navegador processar
+        pos_mouse = pygame.mouse.get_pos()
 
         # --- Processamento de Eventos (usa pos_mouse virtual) ---
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
                 rodando = False
-        
+
             if evento.type == pygame.MOUSEBUTTONDOWN:
                 # Não usamos mais `evento.pos`, usamos a `pos_mouse` já convertida
                 if estado_jogo == TELA_INICIAL:
@@ -1020,7 +1040,7 @@ async def main():
                 elif estado_jogo == SELECAO_FASE:
                     for num, rect in botoes_fase.items():
                         if rect.collidepoint(pos_mouse):
-                            carregar_fase(num)
+                            fase_para_carregar = num
                             estado_jogo = JOGANDO
                     if botao_voltar.collidepoint(pos_mouse):
                         estado_jogo = TELA_INICIAL
@@ -1078,7 +1098,7 @@ async def main():
                     if FASE_ATUAL_NUMERO < 3:
                         # Avança para próxima fase
                         avancar_para_proxima_fase()
-                        carregar_fase(fase_atual)
+                        fase_para_carregar = fase_atual
                         estado_jogo = JOGANDO
                     else:
                         # Volta para seleção de personagens
@@ -1300,11 +1320,7 @@ async def main():
         elif estado_jogo == VITORIA:
             desenhar_tela_vitoria()
 
-        # <--- WEB: Desenha diretamente na tela ---
         tela.blit(tela_virtual, (0, 0))
         pygame.display.flip()
-
-        # Permite que o navegador respire
         await asyncio.sleep(0)
-
     pygame.quit()
