@@ -2,19 +2,28 @@
 # -*- coding: utf-8 -*-
 """
 PLAY TEA - Jogo Educacional
-Versão Web com Pygbag
+Funciona tanto para Android/Desktop quanto para Web
 """
 
-import asyncio
 import os
 import sys
 
 # Adiciona o diretório src ao path para permitir imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
-# Importa o módulo principal do jogo
-import inicio_web
+# Detecta se está rodando no ambiente web (Pygbag)
+try:
+    import asyncio
+    import platform
 
-# Executa o jogo assíncrono
-if __name__ == '__main__':
-    asyncio.run(inicio_web.main())
+    # Se estiver no navegador (Emscripten/WASM)
+    if platform.system() == 'Emscripten':
+        # Importa versão web (assíncrona)
+        import inicio_web
+        asyncio.run(inicio_web.main())
+    else:
+        # Versão desktop/Android (síncrona)
+        import inicio
+except ImportError:
+    # Fallback para versão desktop/Android
+    import inicio
