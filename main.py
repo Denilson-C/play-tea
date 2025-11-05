@@ -232,6 +232,11 @@ criando_linha_reta = False
 ponto_inicio_linha = None
 personagem_iniciou_movimento = False
 
+# Delay para seguir o mouse após completar a fase
+delay_seguir_ativo = False
+tempo_inicio_delay = 0
+DURACAO_DELAY_SEGUIR = 3000  # 3 segundos em milissegundos
+
 # Efeito de vitória
 efeito_vitoria_ativo = False
 tempo_efeito_vitoria = 0
@@ -1019,7 +1024,8 @@ async def main_loop():
            dragging, drag_rect_idx, ponto_inicio_linha, \
            personagem_iniciou_movimento, PONTOS_ACUMULADOS, \
            edit_mode, editando_ponto_inicio, editando_ponto_chegada, \
-           desenhando_caminho, criando_linha_reta
+           desenhando_caminho, criando_linha_reta, delay_seguir_ativo, \
+           tempo_inicio_delay
 
     while rodando:
         # <--- NOVO: Bloco de conversão de coordenadas do mouse ---
@@ -1140,6 +1146,9 @@ async def main_loop():
                         
                         tocar_musica_por_nome(proxima_musica)
                         salvar_configuracoes()  # Salvar a mudança
+                    elif not edit_mode:
+                        # Inicia movimento apenas após o primeiro clique do jogador
+                        personagem_iniciou_movimento = True
                     elif fase_atual in [1, 2, 3] and edit_mode:
                         # Modo de edição ativo
                         if desenhando_caminho:
@@ -1277,10 +1286,18 @@ async def main_loop():
 
             # Movimento e coleta de pontinhos (desabilitado no modo de edição)
             if not (edit_mode and fase_atual in [1, 2, 3]):
-                # Só move o personagem se o mouse estiver sendo movido ou se já iniciou o movimento
-                if personagem_iniciou_movimento or pos_mouse != posicao_peixinho:
+                # Verifica se o delay de seguir está ativo
+                if delay_seguir_ativo:
+                    tempo_atual = pygame.time.get_ticks()
+                    tempo_decorrido = tempo_atual - tempo_inicio_delay
+
+                    if tempo_decorrido >= DURACAO_DELAY_SEGUIR:
+                        # Delay terminou, desativa
+                        delay_seguir_ativo = False
+
+                # Só move o personagem após o primeiro clique do jogador E se o delay não estiver ativo
+                if personagem_iniciou_movimento and not delay_seguir_ativo:
                     set_posicao_peixinho(pos_mouse)
-                    personagem_iniciou_movimento = True
                 
                 # Verifica colisão com pontinhos (se existirem)
                 if len(pontinhos) > 0:
@@ -1300,7 +1317,11 @@ async def main_loop():
                     if verificar_vitoria():
                         # Inicia efeito de vitória
                         iniciar_efeito_vitoria()
-                        
+
+                        # Ativa o delay de 3 segundos para seguir o mouse
+                        delay_seguir_ativo = True
+                        tempo_inicio_delay = pygame.time.get_ticks()
+
                         # Incrementa contador de repetições da fase atual
                         REPETICOES_FASE[FASE_ATUAL_NUMERO] += 1
                         nome_fase = NOMES_FASES.get(FASE_ATUAL_NUMERO, f"Fase {FASE_ATUAL_NUMERO}")
